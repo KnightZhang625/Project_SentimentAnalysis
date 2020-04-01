@@ -52,11 +52,11 @@ def check_overlap(data, dic_set, single_data_or_not=True):
         single_length += 1
         match_per_length += 1
         match_number[idx] = 1
-    _info(line[0])
-    print(single_length / len(sentence_split))
-    print(line)
-    print(match_words)
-    input()
+    # _info(line[0])
+    # print(single_length / len(sentence_split))
+    # print(line)
+    # print(match_words)
+    # input()
     single_length = 0
     total_length += len(sentence_split)
 
