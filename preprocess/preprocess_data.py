@@ -29,9 +29,9 @@ def save_to_binary(data, save_path, replace=False):
       raise FileExistsError
     else:
       _info('{} already exits, replaced.'.format(save_path))
-  else:
-    with codecs.open(save_path, 'wb') as file:
-      pickle.dump(data, file)
+  
+  with codecs.open(save_path, 'wb') as file:
+    pickle.dump(data, file)
 
 def read_dictionary(path, split_tag='\t', need_score=False):
   """read the vocab from the dictionary.
@@ -83,7 +83,27 @@ def read_twitter_data(path, split_tag='\t', polarity=None):
         else:
           data.append((polarity, line))
   _info('{} contains {} data.'.format(path, len(data)))
-  return data
+  if split_tag is not None:
+    return data
+  else:
+    return data[0]
+
+def make_dict(path_set):
+  vocab = []
+  for path in path_set:
+    with codecs.open(path, 'rb') as file:
+      data = pickle.load(file)
+    for v in data:
+      vocab.append(v)
+  
+  supplement_vocab = ['<cls>', '<padding>', '<seq>', '<int_-3>', '<int_-2>', '<int_-1>', '<int_0>', '<negation>']
+  vocab = supplement_vocab + vocab
+
+  vocab_idx = {}
+  for i, v in enumerate(vocab):
+    vocab_idx[v] = i
+  
+  return vocab_idx
 
 if __name__ == '__main__':
   # # load the dictionary
@@ -111,19 +131,30 @@ if __name__ == '__main__':
   #   file_name = str(path).split('/')[-1].replace('.txt', '')
   #   save_to_binary(data, save_path_prefix / '{}.bin'.format(file_name))\
   
-  data_path_list_pos = (MAIN_PATH / 'data/Stanford_Data/pos').rglob('*.txt')
-  data_path_list_neg = (MAIN_PATH / 'data/Stanford_Data/neg').rglob('*.txt')
-  save_path_prefix = MAIN_PATH / 'data/Stanford_Data_binary'
+  # data_path_list_pos = (MAIN_PATH / 'data/Stanford_Data/pos').rglob('*.txt')
+  # data_path_list_neg = (MAIN_PATH / 'data/Stanford_Data/neg').rglob('*.txt')
+  # save_path_prefix = MAIN_PATH / 'data/Stanford_Data_binary'
   
-  data_positve = []
-  data_negative = []
+  # data_positve = []
+  # data_negative = []
   
-  for path in data_path_list_pos:
-    data = read_twitter_data(path, None, 'positive')
-    data_positve.append(data)
-  save_to_binary(data_positve, save_path_prefix / 'pos.bin')
+  # for path in data_path_list_pos:
+  #   data = read_twitter_data(path, None, 1)
+  #   data_positve.append(data)
+  # save_to_binary(data_positve[:12000], save_path_prefix / 'train_pos.bin')
+  # save_to_binary(data_positve[12000:], save_path_prefix / 'test_pos.bin')
 
-  for path in data_path_list_neg:
-    data = read_twitter_data(path, None, 'negative')
-    data_negative.append(data)
-  save_to_binary(data_negative, save_path_prefix / 'neg.bin')
+  # for path in data_path_list_neg:
+  #   data = read_twitter_data(path, None, 0)
+  #   data_negative.append(data)
+  # save_to_binary(data_negative[:12000], save_path_prefix / 'train_neg.bin')
+  # save_to_binary(data_negative[12000:], save_path_prefix / 'test_neg.bin')
+
+  # build vocab_idx
+  prefix_path = MAIN_PATH / 'data/dictionary_binary'
+  dict_path_set = [prefix_path / 'adj.bin',
+                   prefix_path / 'adv.bin',
+                   prefix_path / 'noun.bin',
+                   prefix_path / 'verb.bin']
+  vocab_idx = make_dict(dict_path_set)
+  save_to_binary(vocab_idx, prefix_path / 'vocab_idx.bin')

@@ -72,16 +72,23 @@ if __name__ == '__main__':
   noun_vocab = load_binary(dir_path_prefix / 'noun.bin')
   verb_vocab = load_binary(dir_path_prefix / 'verb.bin')
 
-  # make hash
-  dic_hash = {}
-  for dic in [adj_vocab, adv_vocab, neg_vocab, noun_vocab, verb_vocab]:
-    for v in dic:
-      dic_hash[v] = 0
+  # scores = []
+  # for _, value in int_vocab.items():
+  #   scores.append(value)
+  # print(len(scores))
+  # print(min(scores))
+  # print(max(scores))
 
-  # load the data
-  dir_path = MAIN_PATH / 'data/Stanford_Data_binary'
-  data_all = read_data(dir_path)
+  # # make hash
+  # dic_hash = {}
+  # for dic in [adj_vocab, adv_vocab, neg_vocab, noun_vocab, verb_vocab]:
+  #   for v in dic:
+  #     dic_hash[v] = 0
 
-  # check overlap
-  random.shuffle(data_all)
-  check_overlap(data_all, dic_hash)
+  # # load the data
+  # dir_path = MAIN_PATH / 'data/Stanford_Data_binary'
+  # data_all = read_data(dir_path)
+
+  # # check overlap
+  # random.shuffle(data_all)
+  # check_overlap(data_all, dic_hash)
