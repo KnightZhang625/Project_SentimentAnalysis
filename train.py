@@ -59,7 +59,7 @@ def model_fn_builder():
     with tf.variable_scope('inter_output'):
       output_inter = tf.layers.dense(
         cls_output,
-        64,
+        cg.BertEncoderConfig.intermediate_before_final_output_size,
         activation=tf.nn.relu,
         name='final_output',
         kernel_initializer=ft.create_initialzer(initializer_range=cg.BertEncoderConfig.initializer_range))

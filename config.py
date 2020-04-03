@@ -37,6 +37,7 @@ class BertEncoderConfig(object):
   num_hidden_layers = 2 
   num_attention_heads = 4
   intermediate_size = 320
+  intermediate_before_final_output_size = 64
 
   initializer_range = 0.02
   hidden_act = 'gelu'
