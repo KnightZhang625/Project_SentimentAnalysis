@@ -4,6 +4,7 @@ import codecs
 import pickle
 import random
 import functools
+import numpy as np
 import tensorflow as tf
 # tf.enable_eager_execution()
 
@@ -12,6 +13,7 @@ from log import log_error as _error
 from log import print_process as _process
 
 from config import batch_size
+from config import train_steps
 from config import TRAIN_POS_DATA_PATH as pos_data_path
 from config import TRAIN_NEG_DATA_PATH as neg_data_path
 from config import VOCAB_IDX_PATH as vocab_idx_path
@@ -99,42 +101,33 @@ def process_line(line):
   
   return final_line
 
+# Intensive vocab ids
 intensive_negation_idx_set = [vocab_idx['<int_-3>'], vocab_idx['<int_-2>'], vocab_idx['<int_-1>'], vocab_idx['<int_0>'], vocab_idx['<negation>']]
-not_word_idx_set = [vocab_idx['<padding>'], vocab_idx['<seq>'], vocab_idx['<cls>']]
-def make_mask(data):
-  mask = []
-  for i_o, v_o in enumerate(data):
-    if v_o == vocab_idx['<cls>']:
-      cache = []
-      for v in data:
-        if v != vocab_idx['<padding>']:
-          cache.append(1)
-        else:
-          cache.append(0)
-    elif v_o == vocab_idx['<padding>']:   # padding
-      cache = [0 for _ in range(len(data))]
-    else:
-      if v_o in intensive_negation_idx_set:
-        cache = [0 for _ in range(len(data))]
-        cache[i_o] = 1
-        if data[i_o + 1] not in not_word_idx_set:
-            cache[i_o + 1] = 1
-      else:
-        cache = []
-        for i, v in enumerate(data):
-          if v in intensive_negation_idx_set:
-            if i_o - i == 1:
-              cache.append(1)
-            else:
-              cache.append(0)
-          else:
-            if v != vocab_idx['<padding>']:
-              cache.append(1)
-            else:
-              cache.append(0)
-    mask.append(cache)
+def mask_intensive(vocab):
+  """mask the intensive."""
+  if vocab in intensive_negation_idx_set or vocab == vocab_idx['<padding>']:
+    return 0
+  else:
+    return 1
+
+# no need to intensive
+no_need_intensive = [vocab_idx['<padding>'], vocab_idx['<seq>']]
+def make_mask(line):
+  # initialize the mask
+  initial_mask = np.reshape(np.array(list(map(mask_intensive, line)), dtype=np.int32), [-1, 1])
+  initial_all_mask = np.dot(initial_mask, initial_mask.T)
+
+  # find the intensive index
+  int_idx = [i for i, v in enumerate(line) if v in intensive_negation_idx_set]
+  for i in int_idx:
+    # change the intensive line mask
+    initial_all_mask[i][i] = 1
+    # change mask for the vocab behind the intensive vocab
+    if line[i + 1] not in no_need_intensive:
+      initial_all_mask[i][i+1] = 1
+      initial_all_mask[i+1][i] = 1
   
-  return mask
+  return initial_all_mask
 
 def train_generator():
   """make train, test data."""
@@ -157,23 +150,38 @@ def train_generator():
 
     sentences_idx = list(map(process_line, sentences))
     sentences_idx_padded = padding_data(sentences_idx)
-    yield [len(sen) for sen in sentences_idx_padded]
+    input_mask = list(map(make_mask, sentences_idx_padded))
 
+    features = {'input_data': sentences_idx_padded,
+                'input_mask': input_mask}
+    yield(features, labels)
+     
 def train_input_fn():
   output_types = {'input_data': tf.int32, 
                   'input_mask': tf.int32}
   output_shapes = {'input_data': [None, None],
                    'input_mask': [None, None, None]}
-
+  
+  dataset = tf.data.Dataset.from_generator(
+    train_generator,
+    output_types=(output_types, tf.int32),
+    output_shapes=(output_shapes, [None]))
+  
+  dataset = dataset.repeat(train_steps)
+  return dataset
 
 if __name__ == '__main__':
   # for l in train_generator():
   #   print(l)
   #   input()
 
+  for data in train_input_fn():
+    print(data)
+    # input()
+
   # test_sentence = 'this is a test, i don\' know, this is cool.howerve this is cool, cool cool cool.<br /><br />hahaha, this is haha, go back.'
   # process_line(test_sentence)
 
-  test_data = [0, 100, 200, 3, 100, 3, 2, 100, 1, 1]
-  mask = make_mask(test_data)
-  print(mask)
+  # test_data = [0, 100, 200, 3, 100, 3, 2, 100, 1, 1]
+  # mask = make_mask(test_data)
+  # print(mask)
