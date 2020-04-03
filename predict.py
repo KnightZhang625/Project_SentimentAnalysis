@@ -54,7 +54,7 @@ if __name__ == '__main__':
   model = restore_model(cg.pb_model_path)
   
   predict_pos = predict(model, MAIN_PATH / 'data/Stanford_Data_binary/test_pos.bin')
-  pos_accuracy = 1 - sum(predict_pos) / len(predict_pos)
+  pos_accuracy = sum(predict_pos) / len(predict_pos)
   predict_neg = predict(model, MAIN_PATH / 'data/Stanford_Data_binary/test_neg.bin')
   neg_accuracy = 1 - sum(predict_neg) / len(predict_neg)
 
