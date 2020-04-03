@@ -50,6 +50,12 @@ def model_fn_builder():
     # [b, h]
     cls_output = model.get_cls_output()
 
+    if not is_training:
+      hidden_drouput_prob = 0.0
+    else:
+      hidden_drouput_prob = cg.BertEncoderConfig.hidden_dropout_prob
+
+    # add a intermediate layer
     with tf.variable_scope('inter_output'):
       output_inter = tf.layers.dense(
         cls_output,
@@ -58,7 +64,8 @@ def model_fn_builder():
         name='final_output',
         kernel_initializer=ft.create_initialzer(initializer_range=cg.BertEncoderConfig.initializer_range))
 
-    output_inter = ft.layer_norm_and_dropout(output_inter, cg.BertEncoderConfig.hidden_dropout_prob)
+    # layer norm and dropout
+    output_inter = ft.layer_norm_and_dropout(output_inter, hidden_drouput_prob)
 
     # project the hidden size to the num_classes
     with tf.variable_scope('final_output'):
