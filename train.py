@@ -102,7 +102,8 @@ def model_fn_builder():
         clipped_gradients, _ = tf.clip_by_global_norm(gradients, 5.0)
         train_op = optimizer.apply_gradients(zip(clipped_gradients, tvars), global_step=tf.train.get_global_step())
 
-        logging_hook = tf.train.LoggingTensorHook({'loss' : loss, 'lr': lr}, every_n_iter=cg.print_info_interval)
+        current_steps = tf.train.get_or_create_global_step()
+        logging_hook = tf.train.LoggingTensorHook({'step' : current_steps, 'loss' : loss, 'lr': lr}, every_n_iter=cg.print_info_interval)
 
         output_spec = tf.estimator.EstimatorSpec(mode, loss=loss, train_op=train_op, training_hooks=[logging_hook])
       elif mode == tf.estimator.ModeKeys.EVAL:
