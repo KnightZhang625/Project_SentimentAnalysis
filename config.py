@@ -20,8 +20,8 @@ save_checkpoints_steps = 1000
 batch_size = 32 
 train_steps = 10000
 print_info_interval = 10
-learning_rate = 1e-3
-lr_limit = 1e-4
+learning_rate = 1e-4
+lr_limit = 1e-5
 colocate_gradients_with_ops = True
 
 # Bert
@@ -31,10 +31,10 @@ class BertEncoderConfig(object):
 
   vocab_size = 6099
   num_classes = 2
-  embedding_size = 320
+  embedding_size = 320 
   max_positional_embeddings = 512
   hidden_size = 320
-  num_hidden_layers = 4
+  num_hidden_layers = 2 
   num_attention_heads = 4
   intermediate_size = 320
 

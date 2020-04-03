@@ -73,8 +73,8 @@ def model_fn_builder():
 
         learning_rate = tf.train.polynomial_decay(cg.learning_rate,
                                   tf.train.get_or_create_global_step(),
-                                  cg.train_steps / 100,
-                                  end_learning_rate=1e-4,
+                                  cg.train_steps,
+                                  end_learning_rate=cg.lr_limit,
                                   power=1.0,
                                   cycle=False)
 
