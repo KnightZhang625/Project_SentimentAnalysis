@@ -130,3 +130,5 @@ dmypy.json
 
 data/Stanford_Data/
 .vscode/
+log/
+models/

@@ -17,11 +17,11 @@ keep_checkpoint_max = 1
 save_checkpoints_steps = 10
 
 # global
-batch_size = 64
-train_steps = 1
+batch_size = 32
+train_steps = 10000
 print_info_interval = 10
-learning_rate = 1e-2
-lr_limit = 1e-2
+learning_rate = 5e-4
+lr_limit = 1e-4
 colocate_gradients_with_ops = True
 
 # Bert
@@ -29,13 +29,14 @@ class BertEncoderConfig(object):
   hidden_dropout_prob = 0.1
   attention_dropout_prob = 0.1
 
-  vocab_size = 7819
-  embedding_size = 32
-  max_positional_embeddings = 30
-  hidden_size = 32
-  num_hidden_layers = 4
-  num_attention_heads = 4
-  intermediate_size = 32
+  vocab_size = 6099
+  num_classes = 2
+  embedding_size = 320
+  max_positional_embeddings = 512
+  hidden_size = 320
+  num_hidden_layers = 8
+  num_attention_heads = 8
+  intermediate_size = 320
 
   initializer_range = 0.02
   hidden_act = 'gelu'
