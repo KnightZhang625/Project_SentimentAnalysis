@@ -45,6 +45,7 @@ def predict(model, test_data_path, batch_size=32):
     predictions = model(features)
     predict_results = predictions['predict']
 
+    _info(predict_results)
     predict_result_set.extend(predict_results)
   
   return predict_result_set
