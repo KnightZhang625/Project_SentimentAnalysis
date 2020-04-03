@@ -60,7 +60,10 @@ def model_fn_builder():
         kernel_initializer=ft.create_initialzer(initializer_range=cg.BertEncoderConfig.initializer_range))
 
     if mode == tf.estimator.ModeKeys.PREDICT:
-      pass
+      output_softmax = tf.nn.softmax(output_logits, axis=-1)
+      output_result = tf.argmax(output_softmax, axis=-1)
+      predictions = {'predict': output_result}
+      output_spec = tf.estimator.EstimatorSpec(mode, predictions=predictions)
     else:
       if mode == tf.estimator.ModeKeys.TRAIN:
         batch_size = tf.cast(ft.get_shape_list(labels, expected_rank=1)[0], dtype=tf.float32)
