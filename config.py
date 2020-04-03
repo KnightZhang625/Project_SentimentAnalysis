@@ -14,13 +14,13 @@ NEG_PATH = MAIN_PATH / 'data/dictionary_binary/neg.bin'
 save_model_path = 'models/'
 pb_model_path = 'pb_models/'
 keep_checkpoint_max = 1
-save_checkpoints_steps = 10
+save_checkpoints_steps = 1000 
 
 # global
-batch_size = 32
+batch_size = 32 
 train_steps = 10000
 print_info_interval = 10
-learning_rate = 5e-4
+learning_rate = 1e-3
 lr_limit = 1e-4
 colocate_gradients_with_ops = True
 
@@ -34,8 +34,8 @@ class BertEncoderConfig(object):
   embedding_size = 320
   max_positional_embeddings = 512
   hidden_size = 320
-  num_hidden_layers = 8
-  num_attention_heads = 8
+  num_hidden_layers = 4
+  num_attention_heads = 4
   intermediate_size = 320
 
   initializer_range = 0.02
