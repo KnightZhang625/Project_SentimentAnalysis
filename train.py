@@ -50,11 +50,21 @@ def model_fn_builder():
     # [b, h]
     cls_output = model.get_cls_output()
 
+    with tf.variable_scope('inter_output'):
+      output_inter = tf.layers.dense(
+        cls_output,
+        64,
+        activation=tf.nn.relu,
+        name='final_output',
+        kernel_initializer=ft.create_initialzer(initializer_range=cg.BertEncoderConfig.initializer_range))
+
+    output_inter = ft.layer_norm_and_dropout(output_inter, cg.BertEncoderConfig.hidden_dropout_prob)
+
     # project the hidden size to the num_classes
     with tf.variable_scope('final_output'):
       # [b, num_classes]
       output_logits = tf.layers.dense(
-        cls_output,
+        output_inter,
         cg.BertEncoderConfig.num_classes,
         name='final_output',
         kernel_initializer=ft.create_initialzer(initializer_range=cg.BertEncoderConfig.initializer_range))
