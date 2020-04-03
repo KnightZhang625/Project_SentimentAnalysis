@@ -17,8 +17,8 @@ keep_checkpoint_max = 1
 save_checkpoints_steps = 10
 
 # global
-batch_size = 2
-train_steps = 10000000
+batch_size = 64
+train_steps = 1
 print_info_interval = 10
 learning_rate = 1e-2
 lr_limit = 1e-2
