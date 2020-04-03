@@ -131,30 +131,30 @@ if __name__ == '__main__':
   #   file_name = str(path).split('/')[-1].replace('.txt', '')
   #   save_to_binary(data, save_path_prefix / '{}.bin'.format(file_name))\
   
-  # data_path_list_pos = (MAIN_PATH / 'data/Stanford_Data/pos').rglob('*.txt')
-  # data_path_list_neg = (MAIN_PATH / 'data/Stanford_Data/neg').rglob('*.txt')
-  # save_path_prefix = MAIN_PATH / 'data/Stanford_Data_binary'
+  # data_path_list_pos = (MAIN_PATH / 'data/Stanford_Data/test/pos').rglob('*.txt')
+  data_path_list_pos = (MAIN_PATH / 'data/Stanford_Data/test/pos').rglob('[0-9]*.txt')
+  # data_path_list_neg = (MAIN_PATH / 'data/Stanford_Data/test/neg').rglob('*.txt')
+  data_path_list_neg = (MAIN_PATH / 'data/Stanford_Data/test/pos').rglob('^[0-9]*.txt')
+  save_path_prefix = MAIN_PATH / 'data/Stanford_Data_binary'
   
-  # data_positve = []
-  # data_negative = []
+  data_positve = []
+  data_negative = []
   
-  # for path in data_path_list_pos:
-  #   data = read_twitter_data(path, None, 1)
-  #   data_positve.append(data)
-  # save_to_binary(data_positve[:12000], save_path_prefix / 'train_pos.bin')
-  # save_to_binary(data_positve[12000:], save_path_prefix / 'test_pos.bin')
+  for path in data_path_list_pos:
+    data = read_twitter_data(path, None, 1)
+    data_positve.append(data)
+  save_to_binary(data_positve, save_path_prefix / 'test_train_pos.bin')
 
-  # for path in data_path_list_neg:
-  #   data = read_twitter_data(path, None, 0)
-  #   data_negative.append(data)
-  # save_to_binary(data_negative[:12000], save_path_prefix / 'train_neg.bin')
-  # save_to_binary(data_negative[12000:], save_path_prefix / 'test_neg.bin')
+  for path in data_path_list_neg:
+    data = read_twitter_data(path, None, 0)
+    data_negative.append(data)
+  save_to_binary(data_negative, save_path_prefix / 'test_train_neg.bin')
 
-  # build vocab_idx
-  prefix_path = MAIN_PATH / 'data/dictionary_binary'
-  dict_path_set = [prefix_path / 'adj.bin',
-                   prefix_path / 'adv.bin',
-                   prefix_path / 'noun.bin',
-                   prefix_path / 'verb.bin']
-  vocab_idx = make_dict(dict_path_set)
-  save_to_binary(vocab_idx, prefix_path / 'vocab_idx.bin')
+  # # build vocab_idx
+  # prefix_path = MAIN_PATH / 'data/dictionary_binary'
+  # dict_path_set = [prefix_path / 'adj.bin',
+  #                  prefix_path / 'adv.bin',
+  #                  prefix_path / 'noun.bin',
+  #                  prefix_path / 'verb.bin']
+  # vocab_idx = make_dict(dict_path_set)
+  # save_to_binary(vocab_idx, prefix_path / 'vocab_idx.bin')

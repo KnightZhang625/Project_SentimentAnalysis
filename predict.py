@@ -52,9 +52,9 @@ def predict(model, test_data_path, batch_size=32):
 if __name__ == '__main__':
   model = restore_model(cg.pb_model_path)
   
-  predict_pos = predict(model, MAIN_PATH / 'data/Stanford_Data_binary/test_pos.bin')
+  predict_pos = predict(model, MAIN_PATH / 'data/Stanford_Data_binary/test_train_pos.bin')
   pos_accuracy = sum(predict_pos) / len(predict_pos)
-  predict_neg = predict(model, MAIN_PATH / 'data/Stanford_Data_binary/test_neg.bin')
+  predict_neg = predict(model, MAIN_PATH / 'data/Stanford_Data_binary/test_train_neg.bin')
   neg_accuracy = 1 - sum(predict_neg) / len(predict_neg)
 
   _info('Predict positve accuracy: {}.'.format(pos_accuracy))
