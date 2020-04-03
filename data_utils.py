@@ -174,8 +174,8 @@ def server_input_fn():
   input_data = tf.placeholder(tf.int32, shape=[None, None], name='input_data')
   input_mask = tf.placeholder(tf.int32, shape=[None, None, None], name='input_mask')
 
-  receive_tensors = {'input_x': input_data, 'input_mask': input_mask}
-  features = {'input_x': input_data, 'input_mask': input_mask}
+  receive_tensors = {'input_data': input_data, 'input_mask': input_mask}
+  features = {'input_data': input_data, 'input_mask': input_mask}
 
   return tf.estimator.export.ServingInputReceiver(features, receive_tensors)
 
