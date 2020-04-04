@@ -134,7 +134,7 @@ if __name__ == '__main__':
   # data_path_list_pos = (MAIN_PATH / 'data/Stanford_Data/test/pos').rglob('*.txt')
   data_path_list_pos = (MAIN_PATH / 'data/Stanford_Data/test/pos').rglob('[0-9]*.txt')
   # data_path_list_neg = (MAIN_PATH / 'data/Stanford_Data/test/neg').rglob('*.txt')
-  data_path_list_neg = (MAIN_PATH / 'data/Stanford_Data/test/pos').rglob('^[0-9]*.txt')
+  data_path_list_neg = (MAIN_PATH / 'data/Stanford_Data/test/neg').rglob('[0-9]*.txt')
   save_path_prefix = MAIN_PATH / 'data/Stanford_Data_binary'
   
   data_positve = []
