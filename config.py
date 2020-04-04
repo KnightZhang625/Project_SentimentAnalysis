@@ -17,11 +17,11 @@ keep_checkpoint_max = 1
 save_checkpoints_steps = 1000 
 
 # global
-batch_size = 32 
+batch_size = 64
 train_steps = 10000
 print_info_interval = 10
 learning_rate = 1e-4
-lr_limit = 1e-5
+lr_limit = 1e-4
 colocate_gradients_with_ops = True
 
 # Bert
@@ -34,7 +34,7 @@ class BertEncoderConfig(object):
   embedding_size = 320 
   max_positional_embeddings = 512
   hidden_size = 320
-  num_hidden_layers = 2 
+  num_hidden_layers = 4
   num_attention_heads = 4
   intermediate_size = 320
   intermediate_before_final_output_size = 64
