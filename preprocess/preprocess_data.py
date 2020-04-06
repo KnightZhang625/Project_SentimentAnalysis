@@ -88,13 +88,16 @@ def read_twitter_data(path, split_tag='\t', polarity=None):
   else:
     return data[0]
 
-def make_dict(path_set):
-  vocab = []
-  for path in path_set:
-    with codecs.open(path, 'rb') as file:
-      data = pickle.load(file)
-    for v in data:
-      vocab.append(v)
+def make_dict(path_set, path_or_not=True):
+  if path_or_not:
+    vocab = []
+    for path in path_set:
+      with codecs.open(path, 'rb') as file:
+        data = pickle.load(file)
+      for v in data:
+        vocab.append(v)
+  else:
+    vocab = path_set
   
   supplement_vocab = ['<cls>', '<padding>', '<seq>', '<int_-3>', '<int_-2>', '<int_-1>', '<int_0>', '<negation>']
   vocab = supplement_vocab + vocab

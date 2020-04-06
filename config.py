@@ -6,9 +6,11 @@ MAIN_PATH = Path(__file__).absolute().parent
 # data
 TRAIN_POS_DATA_PATH = MAIN_PATH / 'data/Stanford_Data_binary/train_pos.bin'
 TRAIN_NEG_DATA_PATH = MAIN_PATH / 'data/Stanford_Data_binary/train_neg.bin'
-VOCAB_IDX_PATH = MAIN_PATH / 'data/dictionary_binary/vocab_idx.bin'
-INT_PATH = MAIN_PATH / 'data/dictionary_binary/int.bin'
+VOCAB_IDX_PATH = MAIN_PATH / 'data/dictionary_binary/vocab_idx_new.bin'
+INT_PATH = MAIN_PATH / 'data/dictionary_binary/int_new.bin'
 NEG_PATH = MAIN_PATH / 'data/dictionary_binary/neg.bin'
+BIGRAM_PATH = MAIN_PATH / 'data/dictionary_binary/bigram.bin'
+BIGRAM_INT_PATH = MAIN_PATH / 'data/dictionary_binary/bigram_int.bin'
 
 # model path
 save_model_path = 'models/'

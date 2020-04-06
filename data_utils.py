@@ -8,6 +8,9 @@ import numpy as np
 import tensorflow as tf
 tf.enable_eager_execution()
 
+from nltk.stem import PorterStemmer 
+ps = PorterStemmer()
+
 from log import log_info as _info
 from log import log_error as _error
 from log import print_process as _process
@@ -19,18 +22,26 @@ from config import TRAIN_NEG_DATA_PATH as neg_data_path
 from config import VOCAB_IDX_PATH as vocab_idx_path
 from config import INT_PATH as int_path
 from config import NEG_PATH as neg_path
+from config import BIGRAM_PATH as bigram_path
+from config import BIGRAM_INT_PATH as bigram_int_path
 
 def load_dict():
   """load the necessary dictionaries."""
   global vocab_idx
   global int_vocab
   global neg_vocab
+  global bi_list
+  global bi_int_list
   with codecs.open(vocab_idx_path, 'rb') as file_vocab, \
        codecs.open(int_path, 'rb') as file_int, \
-       codecs.open(neg_path, 'rb') as file_neg:
+       codecs.open(neg_path, 'rb') as file_neg, \
+       codecs.open(bigram_path, 'rb') as file_bi, \
+       codecs.open(bigram_int_path, 'rb') as file_bi_int:
       vocab_idx = pickle.load(file_vocab)
       int_vocab = pickle.load(file_int)
       neg_vocab = pickle.load(file_neg)
+      bi_list = pickle.load(file_bi)
+      bi_int_list = pickle.load(file_bi_int)
 load_dict()
 
 def provide_batch_idx(data_length, batch_size):
@@ -53,7 +64,7 @@ def padding_data(data_batch):
 
 """should, could"""
 """<br /><br />, ., ,"""
-def process_line(line):
+def process_line(line, include_bi=True):
   """Tool for processing each line.
   
     Steps:
@@ -72,10 +83,50 @@ def process_line(line):
   # extract keywords
   final_line = []
   for idx, line in enumerate(line_set):
-    line = line.split(' ')
+    line = line.strip().split(' ')
     cache = []
-    for v in line:
-      if v in ['should', 'could']:
+
+    if include_bi:
+      bi_index_cache = {}
+      int_index_cache = {}
+      for bi in bi_list:
+        if bi in ' '.join(line):
+          bi = bi.split(' ')
+          try:
+            bi_index_cache[line.index(bi[0])] = bi
+            bi_index_cache[line.index(bi[1])] = False
+          except Exception as e:
+            continue
+      for bi in bi_int_list:
+        if bi in ' '.join(line):
+          bi = bi.split(' ')
+          try:
+            for i, b in enumerate(bi):
+              if i == 0:
+                int_index_cache[line.index(b)] = bi
+              else:
+                int_index_cache[line.index(b)] = False
+          except Exception as e:
+            continue
+
+    for i, v in enumerate(line):
+      if i in bi_index_cache:
+        if bi_index_cache[i]:
+          bi = ' '.join(bi_index_cache[i])
+          cache.append(vocab_idx[bi])
+      elif i in int_index_cache:
+        if int_index_cache[i]:
+          bi = ' '.join(int_index_cache[i])
+          score = int_vocab[bi]
+          if -3 <= score < -2:
+            cache.append(vocab_idx['<int_-3>'])
+          elif -2 <= score < -1:
+            cache.append(vocab_idx['<int_-2>'])
+          elif -1 <= score < 0:
+            cache.append(vocab_idx['<int_-1>'])
+          else:
+            cache.append(vocab_idx['<int_0>'])
+      elif v in ['dsadsdajdakjflksajfsk']:
         break
       elif v in vocab_idx:
         cache.append(vocab_idx[v])
@@ -97,6 +148,7 @@ def process_line(line):
     if idx < len(line_set) - 1 and len(cache) != 0:
       cache.append(vocab_idx['<seq>'])
       final_line.extend(cache)
+
   final_line.insert(0, vocab_idx['<cls>'])
   
   return final_line
@@ -180,12 +232,12 @@ def server_input_fn():
   return tf.estimator.export.ServingInputReceiver(features, receive_tensors)
 
 if __name__ == '__main__':
-  # for l in train_generator():
-  #   print(l)
-  #   input()
+  for l in train_generator():
+    print(l)
+    # input()
 
-  for data in train_input_fn():
-    print(data)
+  # for data in train_input_fn():
+  #   print(data)
     # input()
 
   # test_sentence = 'this is a test, i don\' know, this is cool.howerve this is cool, cool cool cool.<br /><br />hahaha, this is haha, go back.'
