@@ -111,7 +111,19 @@ def process_line(line, include_bi=True):
   final_line = []
   for line in line_set:
     # split the words
+    line_split = []
     line = line.strip().split(' ')
+    for v in line:
+      v_1 = v.split('-')
+      v_2 = v.split('_')
+      if len(v_1) > 1:
+        line_split.extend(v_1)
+      elif len(v_2) > 1:
+        line_split.extend(v_2)
+      else:
+        line_split.append(v)
+ 
+    line = line_split
     # words indices cache for each line
     cache = []
 
