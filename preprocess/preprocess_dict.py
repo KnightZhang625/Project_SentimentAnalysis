@@ -77,3 +77,4 @@ if __name__ == '__main__':
   new_dict, new_dict_bi = make_dict_for_int(prefix_path / 'int.bin')
   save_to_binary(new_dict, prefix_path / 'int_new.bin')
   save_to_binary(new_dict_bi, prefix_path / 'bigram_int.bin' )
+
