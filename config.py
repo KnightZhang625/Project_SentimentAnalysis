@@ -6,11 +6,12 @@ MAIN_PATH = Path(__file__).absolute().parent
 # data
 TRAIN_POS_DATA_PATH = MAIN_PATH / 'data/Stanford_Data_binary/train_pos.bin'
 TRAIN_NEG_DATA_PATH = MAIN_PATH / 'data/Stanford_Data_binary/train_neg.bin'
-VOCAB_IDX_PATH = MAIN_PATH / 'data/dictionary_binary/vocab_idx_new.bin'
-INT_PATH = MAIN_PATH / 'data/dictionary_binary/int_new.bin'
+VOCAB_IDX_PATH = MAIN_PATH / 'data/dictionary_binary_new/vocab.bin'
+INT_PATH = MAIN_PATH / 'data/dictionary_binary_new/int.bin'
 NEG_PATH = MAIN_PATH / 'data/dictionary_binary/neg.bin'
-BIGRAM_PATH = MAIN_PATH / 'data/dictionary_binary/bigram.bin'
-BIGRAM_INT_PATH = MAIN_PATH / 'data/dictionary_binary/bigram_int.bin'
+KEYWORDS_PATH = MAIN_PATH / 'data/dictionary_binary_new/keywords.bin'
+BIGRAM_PATH = MAIN_PATH / 'data/dictionary_binary_new/bi_keywords.bin'
+BIGRAM_INT_PATH = MAIN_PATH / 'data/dictionary_binary_new/bi_int.bin'
 
 # model path
 save_model_path = 'models/'
@@ -31,7 +32,7 @@ class BertEncoderConfig(object):
   hidden_dropout_prob = 0.1
   attention_dropout_prob = 0.1
 
-  vocab_size = 6099
+  vocab_size = 8757
   num_classes = 2
   embedding_size = 320 
   max_positional_embeddings = 512
