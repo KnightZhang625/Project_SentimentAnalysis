@@ -28,40 +28,40 @@ def load_dict(path):
   _info('{} contains {} vocabs.'.format(path, len(data)))
   return data
 
-def make_dict(data, split_tag):
+def make_dict(data, split_tag, change):
   vocab_dict = {}
   bi_vocab_dict = {}
   for item in data:
     vocab, value = item[0].strip(), item[1]
     if len(vocab.split(split_tag)) == 2:
       vocab = ' '.join(vocab.split(split_tag))  # remove split_tag
-      bi_vocab_dict[vocab] = float(value)
+      bi_vocab_dict[vocab] = change(value)
     else:
-      vocab_dict[vocab] = float(value)
+      vocab_dict[vocab] = change(value)
   return vocab_dict, bi_vocab_dict
 
 if __name__ == '__main__':
-  # adj_data = load_dict(MAIN_PATH / 'data/dictionary/adj_dictionary1.11.txt')
-  # adv_data = load_dict(MAIN_PATH / 'data/dictionary/adv_dictionary1.11.txt')
-  # noun_data = load_dict(MAIN_PATH / 'data/dictionary/noun_dictionary1.11.txt')
-  # verb_data = load_dict(MAIN_PATH / 'data/dictionary/verb_dictionary1.11.txt')
-  # int_data = load_dict(MAIN_PATH / 'data/dictionary/int_dictionary1.11.txt')
-  # all_data = adj_data + adv_data + noun_data + verb_data
+  adj_data = load_dict(MAIN_PATH / 'data/dictionary/adj_dictionary1.11.txt')
+  adv_data = load_dict(MAIN_PATH / 'data/dictionary/adv_dictionary1.11.txt')
+  noun_data = load_dict(MAIN_PATH / 'data/dictionary/noun_dictionary1.11.txt')
+  verb_data = load_dict(MAIN_PATH / 'data/dictionary/verb_dictionary1.11.txt')
+  int_data = load_dict(MAIN_PATH / 'data/dictionary/int_dictionary1.11.txt')
+  all_data = adj_data + adv_data + noun_data + verb_data
 
-  # vocab_dict, bi_vocab_dict = make_dict(all_data, split_tag='-')
-  # int_dict, bi_int_dict = make_dict(int_data, split_tag='_')
+  vocab_dict, bi_vocab_dict = make_dict(all_data, split_tag='-', change=int)
+  int_dict, bi_int_dict = make_dict(int_data, split_tag='_', change=float)
 
-  # save_to_binary(vocab_dict, MAIN_PATH / 'data/dictionary_binary_new/keywords.bin')
-  # save_to_binary(bi_vocab_dict, MAIN_PATH / 'data/dictionary_binary_new/bi_keywords.bin')
-  # save_to_binary(int_dict, MAIN_PATH / 'data/dictionary_binary_new/int.bin')
-  # save_to_binary(bi_int_dict, MAIN_PATH / 'data/dictionary_binary_new/bi_int.bin')
+  save_to_binary(vocab_dict, MAIN_PATH / 'data/dictionary_binary_new/keywords.bin')
+  save_to_binary(bi_vocab_dict, MAIN_PATH / 'data/dictionary_binary_new/bi_keywords.bin')
+  save_to_binary(int_dict, MAIN_PATH / 'data/dictionary_binary_new/int.bin')
+  save_to_binary(bi_int_dict, MAIN_PATH / 'data/dictionary_binary_new/bi_int.bin')
   
   supplement_vocab = ['<cls>', '<padding>', '<seq>', '<int_-3>', '<int_-2>', '<int_-1>', '<int_0>', '<negation>']
-  keywords_vocab = [int(i) for i in range(-5, 6)]
-  final_vocab = keywords_vocab + supplement_vocab
-
+  keywords_vocab = [key for key in vocab_dict] + [key for key in bi_vocab_dict]
+  int_vocab = [key for key in int_dict] + [key for key in bi_int_dict]
+  final_vocab = supplement_vocab + keywords_vocab + int_vocab
   final_dict = {}
   for i, v in enumerate(final_vocab):
     final_dict[v] = i
-  print(final_dict)
+
   save_to_binary(final_dict, MAIN_PATH / 'data/dictionary_binary_new/vocab.bin')
