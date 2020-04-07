@@ -88,10 +88,11 @@ def process_line(line, include_bi=True):
   def check_uni(uni_cand):
     """extract unigram words."""
     if uni_cand in keywords_vocab:
-      return vocab_idx[keywords_vocab[uni_cand]]
+      return vocab_idx[uni_cand]
     elif uni_cand in int_vocab:
-      score = int_vocab[uni_cand]
-      return intense_section(score)
+      # score = int_vocab[uni_cand]
+      # return intense_section(score)
+      return vocab_idx[uni_cand]
     elif uni_cand in neg_vocab:
       return vocab_idx['<negation>']
     else:
@@ -122,11 +123,12 @@ def process_line(line, include_bi=True):
         if next_n < len(line):
           bi_cand = ' '.join(line[n:next_n+1])  # candidate bigram
           if bi_cand in bigram:
-            cache.append(vocab_idx[bigram[bi_cand]])
+            cache.append(vocab_idx[bi_cand])
             n = next_n + 1
           elif bi_cand in bigram_int:
-            score = bigram_int[bi_cand]
-            cache.append(intense_section(score))
+            # score = bigram_int[bi_cand]
+            # cache.append(intense_section(score))
+            cache.append(vocab_idx[bi_cand])
             n = next_n + 1
           else:   # extract unigram keywords
             uni_cand = line[n]
@@ -157,7 +159,8 @@ def process_line(line, include_bi=True):
 
 """mask the intensive."""
 # Intensive vocab ids
-intensive_negation_idx_set = [vocab_idx['<int_-3>'], vocab_idx['<int_-2>'], vocab_idx['<int_-1>'], vocab_idx['<int_0>'], vocab_idx['<negation>']]
+# intensive_negation_idx_set = [vocab_idx['<int_-3>'], vocab_idx['<int_-2>'], vocab_idx['<int_-1>'], vocab_idx['<int_0>'], vocab_idx['<negation>']]
+intensive_negation_idx_set = [vocab_idx[v] for v in int_vocab] + [vocab_idx[v] for v in bigram_int] + [vocab_idx['<negation>']]
 def mask_intensive(vocab):
   if vocab in intensive_negation_idx_set or vocab == vocab_idx['<padding>']:
     return 0
