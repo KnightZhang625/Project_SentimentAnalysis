@@ -62,7 +62,7 @@ def assert_rank(tensor, expected_rank, name):
         `{}` (shape = {}) is not equal to the expected rank `{}`'.format(
           name, scope_name, actual_rank, tensor.shape, expected_rank))
 
-def create_initialzer(init_type='trunc', initializer_range=0.02):
+def create_initializer(init_type='trunc', initializer_range=0.02):
   if init_type is 'trunc':
     return tf.truncated_normal_initializer(stddev=initializer_range)
   else:

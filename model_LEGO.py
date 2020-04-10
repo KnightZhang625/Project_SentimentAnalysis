@@ -29,7 +29,7 @@ def embedding_lookup(input_ids,
   embedding_table = tf.get_variable(
     name=word_embedding_name,
     shape=[vocab_size, embedding_size],
-    initializer=ft.create_initialzer(initializer_range=initializer_range))
+    initializer=ft.create_initializer(initializer_range=initializer_range))
   
   if use_one_hot_embeddings:
     input_shape = ft.get_shape_list(input_ids, expected_rank=2)
@@ -75,7 +75,7 @@ def embedding_postprocessor(input_tensor,
       full_positional_embeddings = tf.get_variable(
         name=positional_embedding_name,
         shape=[max_positional_embeddings, width],
-        initializer=ft.create_initialzer(initializer_range=initializer_range))
+        initializer=ft.create_initializer(initializer_range=initializer_range))
     
     positional_embeddings = tf.slice(full_positional_embeddings, [0, 0], [seq_length, -1])  # [seq_length, width]
     positional_embeddings = tf.expand_dims(positional_embeddings, [0])  # [1, seq_length, width]
@@ -164,7 +164,7 @@ def transformer_model(input_tensor,
           attention_output = tf.layers.dense(
             attention_head,
             hidden_size,
-            kernel_initializer=ft.create_initialzer(initializer_range=initializer_range))
+            kernel_initializer=ft.create_initializer(initializer_range=initializer_range))
           attention_output = ft.dropout(attention_output, hidden_dropout_prob)
           attention_output = ft.layer_norm(attention_output + layer_input)
 
@@ -174,14 +174,14 @@ def transformer_model(input_tensor,
           attention_head,
           intermediate_size,
           activation=intermediate_act_fn,
-          kernel_initializer=ft.create_initialzer(initializer_range=initializer_range))
+          kernel_initializer=ft.create_initializer(initializer_range=initializer_range))
       
       with tf.variable_scope('output'):
         # [b, s, h]
         layer_output = tf.layers.dense(
           intermediate_output,
           hidden_size,
-          kernel_initializer=ft.create_initialzer(initializer_range=initializer_range))
+          kernel_initializer=ft.create_initializer(initializer_range=initializer_range))
         layer_output = ft.dropout(layer_output, hidden_dropout_prob)
         layer_output = ft.layer_norm(layer_output + attention_output)
         prev_output = layer_output
@@ -268,21 +268,21 @@ def attention_layer(input_tensor,
     num_attention_heads * size_per_head,
     activation=query_act,
     name='query',
-    kernel_initializer=ft.create_initialzer(initializer_range=initializer_range))
+    kernel_initializer=ft.create_initializer(initializer_range=initializer_range))
 
   key_layer = tf.layers.dense(
     input_tensor,
     num_attention_heads * size_per_head,
     activation=key_act,
     name='key',
-    kernel_initializer=ft.create_initialzer(initializer_range=initializer_range))
+    kernel_initializer=ft.create_initializer(initializer_range=initializer_range))
   
   value_layer = tf.layers.dense(
     input_tensor,
     num_attention_heads * size_per_head,
     activation=value_act,
     name='value',
-    kernel_initializer=ft.create_initialzer(initializer_range=initializer_range))
+    kernel_initializer=ft.create_initializer(initializer_range=initializer_range))
   
   # [b, n, s, a]
   query_layer = transpose_for_scores(query_layer, batch_size, seq_length, 
@@ -365,29 +365,23 @@ def vae(state, num_units, scope='vae'):
     The formula to calculate the vae loss:
       vae_loss = (-0.5 * tf.reduce_sum(1.0 + vae_vb - tf.square(vae_mean) - tf.exp(vae_vb)) / batch_size) * 0.001  
     """
-    # states = [state[0], state[1], state[2], state[3]]
-    states = [state[0], state[1]]
-    states = tf.transpose(state, [1, 0, 2])
-    shape = get_shape_list(states)
+    shape = ft.get_shape_list(state, expected_rank=2)
 
     with tf.variable_scope(scope):
-        vae_mean = tf.layers.dense(states,
-                                        num_units,
-                                        activation=tf.nn.tanh,
-                                        name='vae_mean',
-                                        kernel_initializer=create_initializer())
-
-        vae_vb = tf.layers.dense(states,
-                                      num_units,
-                                      activation=tf.nn.tanh,
-                                      name='vae_vb',
-                                      kernel_initializer=create_initializer())
-        
-        eps = tf.random_normal([shape[0], shape[1], num_units], 0.0, 1.0, dtype=tf.float32)
+        vae_mean = tf.layers.dense(state,
+                                  num_units,
+                                  activation=tf.nn.tanh,
+                                  name='vae_mean',
+                                  kernel_initializer=ft.create_initializer())
+                                                              
+        vae_vb = tf.layers.dense(state,
+                                num_units,
+                                activation=tf.nn.tanh,
+                                name='vae_vb',
+                                kernel_initializer=ft.create_initializer())
+  
+        eps = tf.random_normal([shape[0], num_units], 0.0, 1.0, dtype=tf.float32)
 
         z = vae_mean + tf.sqrt(tf.exp(vae_vb)) * eps
     
-    states_list = []
-    for i in range(_cg.nmt_config.num_layers):
-        states_list.append(z[:, i, :])
-    return tuple(states_list), vae_mean, vae_vb
+    return z, vae_mean, vae_vb

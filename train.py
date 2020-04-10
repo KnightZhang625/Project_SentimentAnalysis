@@ -7,6 +7,7 @@ import tensorflow as tf
 from pathlib import Path
 
 import config as cg
+import model_LEGO as lego
 import function_toolkit as ft
 from model import BertEncoder
 from data_utils import train_input_fn, server_input_fn
@@ -55,17 +56,22 @@ def model_fn_builder():
     else:
       hidden_drouput_prob = cg.BertEncoderConfig.hidden_dropout_prob
 
-    # add a intermediate layer
-    with tf.variable_scope('inter_output'):
-      output_inter = tf.layers.dense(
-        cls_output,
-        cg.BertEncoderConfig.intermediate_before_final_output_size,
-        activation=tf.nn.relu,
-        name='final_output',
-        kernel_initializer=ft.create_initialzer(initializer_range=cg.BertEncoderConfig.initializer_range))
+    # enable vae
+    if cg.enable_vae:
+      output_inter, vae_mean, vae_vb = lego.vae(cls_output, 
+                                                cg.BertEncoderConfig.intermediate_before_final_output_size)
+    else:
+      # add a intermediate layer
+      with tf.variable_scope('inter_output'):
+        output_inter = tf.layers.dense(
+          cls_output,
+          cg.BertEncoderConfig.intermediate_before_final_output_size,
+          activation=tf.nn.relu,
+          name='final_output',
+          kernel_initializer=ft.create_initializer(initializer_range=cg.BertEncoderConfig.initializer_range))
 
-    # layer norm and dropout
-    output_inter = ft.layer_norm_and_dropout(output_inter, hidden_drouput_prob)
+      # layer norm and dropout
+      output_inter = ft.layer_norm_and_dropout(output_inter, hidden_drouput_prob)
 
     # project the hidden size to the num_classes
     with tf.variable_scope('final_output'):
@@ -74,7 +80,7 @@ def model_fn_builder():
         output_inter,
         cg.BertEncoderConfig.num_classes,
         name='final_output',
-        kernel_initializer=ft.create_initialzer(initializer_range=cg.BertEncoderConfig.initializer_range))
+        kernel_initializer=ft.create_initializer(initializer_range=cg.BertEncoderConfig.initializer_range))
 
     if mode == tf.estimator.ModeKeys.PREDICT:
       output_softmax = tf.nn.softmax(output_logits, axis=-1)
@@ -87,6 +93,10 @@ def model_fn_builder():
         loss = tf.reduce_sum(tf.nn.sparse_softmax_cross_entropy_with_logits(
           labels=labels,
           logits=output_logits)) / batch_size
+        
+        if cg.enable_vae:
+          vae_loss = (-0.5 * tf.reduce_sum(1.0 + vae_vb - tf.square(vae_mean) - tf.exp(vae_vb)) / batch_size) * 1e-2
+          loss += vae_loss
 
         learning_rate = tf.train.polynomial_decay(cg.learning_rate,
                                   tf.train.get_or_create_global_step(),
@@ -103,7 +113,14 @@ def model_fn_builder():
         train_op = optimizer.apply_gradients(zip(clipped_gradients, tvars), global_step=tf.train.get_global_step())
 
         current_steps = tf.train.get_or_create_global_step()
-        logging_hook = tf.train.LoggingTensorHook({'step' : current_steps, 'loss' : loss, 'lr': lr}, every_n_iter=cg.print_info_interval)
+        if cg.enable_vae:
+          logging_hook = tf.train.LoggingTensorHook(
+            {'step' : current_steps, 'loss' : loss - vae_loss, 'vae_loss': vae_loss, 'lr': lr}, 
+            every_n_iter=cg.print_info_interval)
+        else:
+          logging_hook = tf.train.LoggingTensorHook(
+            {'step' : current_steps, 'loss' : loss, 'lr': lr}, 
+            every_n_iter=cg.print_info_interval)
 
         output_spec = tf.estimator.EstimatorSpec(mode, loss=loss, train_op=train_op, training_hooks=[logging_hook])
       elif mode == tf.estimator.ModeKeys.EVAL:

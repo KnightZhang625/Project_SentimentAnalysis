@@ -23,14 +23,15 @@ save_checkpoints_steps = 1000
 batch_size = 64
 train_steps = 10000
 print_info_interval = 10
-learning_rate = 1e-4
+learning_rate = 1e-3
 lr_limit = 1e-4
 colocate_gradients_with_ops = True
+enable_vae = True
 
 # Bert
 class BertEncoderConfig(object):
-  hidden_dropout_prob = 0.1
-  attention_dropout_prob = 0.1
+  hidden_dropout_prob = 0.2
+  attention_dropout_prob = 0.2
 
   vocab_size = 6314
   num_classes = 2
@@ -40,7 +41,7 @@ class BertEncoderConfig(object):
   num_hidden_layers = 4
   num_attention_heads = 4
   intermediate_size = 320
-  intermediate_before_final_output_size = 32
+  intermediate_before_final_output_size = 320
 
   initializer_range = 0.02
   hidden_act = 'gelu'
