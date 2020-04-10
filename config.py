@@ -20,7 +20,7 @@ keep_checkpoint_max = 1
 save_checkpoints_steps = 1000 
 
 # global
-batch_size = 32
+batch_size = 2
 train_steps = 1
 print_info_interval = 10
 learning_rate = 1e-3
@@ -34,13 +34,13 @@ class BertEncoderConfig(object):
   hidden_dropout_prob = 0.2
   attention_dropout_prob = 0.2
 
-  vocab_size = 6314
+  vocab_size = 29258
   num_classes = 2
-  embedding_size = 320
-  max_positional_embeddings = 512
-  hidden_size = 320
-  num_hidden_layers = 4
-  num_attention_heads = 4
+  embedding_size = 30
+  max_positional_embeddings = 2000
+  hidden_size = 30
+  num_hidden_layers = 2
+  num_attention_heads = 2
   intermediate_size = 320
   intermediate_before_final_output_size = 320
 

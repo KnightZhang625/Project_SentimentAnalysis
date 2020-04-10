@@ -141,7 +141,7 @@ def extract_features(data):
   # Padding
   input_idx_padded = np.array(padding_data(input_idx), dtype=np.int32)
   sentiment_labels_padded = np.array(padding_data(sentiment_labels, [-1, -1, -1]), dtype=np.float32)
-  sentiment_mask_indices_padded = np.array(padding_data(sentiment_mask_indices, -1), dtype=np.int32)
+  sentiment_mask_indices_padded = np.array(padding_data(sentiment_mask_indices, 0), dtype=np.int32)
 
   # Make Mask
   input_mask = list(map(make_mask, input_idx_padded, sentiment_mask_indices))

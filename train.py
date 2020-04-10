@@ -10,7 +10,7 @@ import config as cg
 import model_LEGO as lego
 import function_toolkit as ft
 from model import BertEncoder
-from data_utils import train_input_fn, server_input_fn
+from data_utils_2 import train_input_fn
 
 from log import log_info as _info
 from log import log_error as _error
@@ -28,6 +28,31 @@ class Setup(object):
         logging.getLogger('tensorflow').handlers = handlers
 setup = Setup()
 
+def gather_indexs(sequence_output, sentiment_mask_indices):
+  shape = ft.get_shape_list(sequence_output, expected_rank=3)
+  batch_size = shape[0]
+  seq_length = shape[1]
+  width = shape[2]
+
+  # [b, 1]
+  flat_offsets = tf.reshape(
+      tf.range(0, batch_size, dtype=tf.int32) * seq_length, [-1, 1])
+  # [b, x]
+  flat_positions = tf.reshape(flat_offsets + sentiment_mask_indices, [-1])
+  # [b * s, w]
+  flat_sequence_output = tf.reshape(sequence_output, [batch_size * seq_length, width])
+  # [b * x, w]
+  output_tensor = tf.gather(flat_sequence_output, flat_positions)
+
+  return output_tensor
+
+def get_true_sequence(sentiment_labels):
+  sentiment_labels = tf.reshape(sentiment_labels, [-1]) + -1
+  sentiment_labels = tf.cast(sentiment_labels, dtype=tf.bool)
+  true_sequence = tf.cast(sentiment_labels, dtype=tf.float32)
+
+  return true_sequence
+
 def model_fn_builder():
   """returns `model_fn` closure for the Estimator."""
 
@@ -41,47 +66,38 @@ def model_fn_builder():
     # get data
     input_data = features['input_data']
     input_mask = features['input_mask']
-    
-    if is_training:
-      sentiment_labels = features['sentiment_labels']
-      sentiment_mask_indices = features['sentiment_mask_indices']
-  
+    sentiment_labels = features['sentiment_labels']
+    sentiment_mask_indices = features['sentiment_mask_indices']
+
     # build model
     model = BertEncoder(
       config=cg.BertEncoderConfig,
       is_training=is_training,
       input_ids=input_data,
       input_mask=input_mask)
-    # [b, h]
+    # [cls] output -> [b, h]
     cls_output = model.get_cls_output()
+    # sequence_output -> [b, s, h]
+    sequence_output = model.get_sequence_output()
+    # masked_output -> [b * x, h]
+    masked_output = gather_indexs(sequence_output, sentiment_mask_indices)
 
-    if not is_training:
-      hidden_drouput_prob = 0.0
-    else:
-      hidden_drouput_prob = cg.BertEncoderConfig.hidden_dropout_prob
-
-    # enable vae
-    if cg.enable_vae:
-      output_inter, vae_mean, vae_vb = lego.vae(cls_output, 
-                                                cg.BertEncoderConfig.intermediate_before_final_output_size)
-    else:
-      # add a intermediate layer
-      with tf.variable_scope('inter_output'):
-        output_inter = tf.layers.dense(
-          cls_output,
-          cg.BertEncoderConfig.intermediate_before_final_output_size,
-          activation=tf.nn.relu,
-          name='final_output',
-          kernel_initializer=ft.create_initializer(initializer_range=cg.BertEncoderConfig.initializer_range))
-
-      # layer norm and dropout
-      output_inter = ft.layer_norm_and_dropout(output_inter, hidden_drouput_prob)
+    # get output for word polarity prediction
+    with tf.variable_scope('sentiment_project'):
+      # [b * h, 3]
+      output_sentiment = tf.layers.dense(
+        masked_output,
+        3,
+        activation=tf.nn.relu,
+        name='final_output',
+        kernel_initializer=ft.create_initializer(initializer_range=cg.BertEncoderConfig.initializer_range))
+      output_sentiment_probs = tf.nn.softmax(output_sentiment, axis=-1)
 
     # project the hidden size to the num_classes
     with tf.variable_scope('final_output'):
       # [b, num_classes]
       output_logits = tf.layers.dense(
-        output_inter,
+        cls_output,
         cg.BertEncoderConfig.num_classes,
         name='final_output',
         kernel_initializer=ft.create_initializer(initializer_range=cg.BertEncoderConfig.initializer_range))
@@ -94,13 +110,17 @@ def model_fn_builder():
     else:
       if mode == tf.estimator.ModeKeys.TRAIN:
         batch_size = tf.cast(ft.get_shape_list(labels, expected_rank=1)[0], dtype=tf.float32)
-        loss = tf.reduce_sum(tf.nn.sparse_softmax_cross_entropy_with_logits(
+        cls_loss = tf.reduce_sum(tf.nn.sparse_softmax_cross_entropy_with_logits(
           labels=labels,
           logits=output_logits)) / batch_size
         
-        if cg.enable_vae:
-          vae_loss = (-0.5 * tf.reduce_sum(1.0 + vae_vb - tf.square(vae_mean) - tf.exp(vae_vb)) / batch_size) * 1e-2
-          loss += vae_loss
+        output_sentiment_probs = tf.reshape(output_sentiment_probs, [-1])
+        true_sequence = get_true_sequence(sentiment_labels)
+        length = ft.get_shape_list(true_sequence, expected_rank=1)
+        sentiment_labels = tf.reshape(sentiment_labels, [-1])
+        mse_loss = tf.reduce_sum(tf.pow((output_sentiment_probs - sentiment_labels), 2) * true_sequence) / length / batch_size
+
+        loss = cls_loss + mse_loss
 
         learning_rate = tf.train.polynomial_decay(cg.learning_rate,
                                   tf.train.get_or_create_global_step(),
@@ -117,14 +137,9 @@ def model_fn_builder():
         train_op = optimizer.apply_gradients(zip(clipped_gradients, tvars), global_step=tf.train.get_global_step())
 
         current_steps = tf.train.get_or_create_global_step()
-        if cg.enable_vae:
-          logging_hook = tf.train.LoggingTensorHook(
-            {'step' : current_steps, 'loss' : loss - vae_loss, 'vae_loss': vae_loss, 'lr': lr}, 
-            every_n_iter=cg.print_info_interval)
-        else:
-          logging_hook = tf.train.LoggingTensorHook(
-            {'step' : current_steps, 'loss' : loss, 'lr': lr}, 
-            every_n_iter=cg.print_info_interval)
+        logging_hook = tf.train.LoggingTensorHook(
+          {'step' : current_steps, 'loss' : loss, 'cls_loss' : cls_loss, 'mse_loss' : mse_loss, 'lr' : lr}, 
+          every_n_iter=cg.print_info_interval)
 
         output_spec = tf.estimator.EstimatorSpec(mode, loss=loss, train_op=train_op, training_hooks=[logging_hook])
       elif mode == tf.estimator.ModeKeys.EVAL:
