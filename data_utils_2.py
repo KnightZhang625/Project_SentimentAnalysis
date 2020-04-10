@@ -8,7 +8,7 @@ import random
 import functools
 import numpy as np
 import tensorflow as tf
-tf.enable_eager_execution()
+# tf.enable_eager_execution()
 from nltk import sent_tokenize, word_tokenize
 
 from preprocess.SentiWordNet import get_sentiment, penn_to_wn, ps
@@ -75,6 +75,9 @@ def make_mask(data, sentiment_indices):
       input_mask.append(1)
     else:
       input_mask.append(0)
+  input_mask = np.reshape(np.array(input_mask, dtype=np.float32), [1, -1])
+  input_mask = np.dot(input_mask.T, input_mask)
+  
   return input_mask
 
 """ramdom mask sentiment words."""
@@ -141,7 +144,7 @@ def extract_features(data):
   sentiment_mask_indices_padded = np.array(padding_data(sentiment_mask_indices, -1), dtype=np.int32)
 
   # Make Mask
-  input_mask = np.array(list(map(make_mask, input_idx_padded, sentiment_mask_indices)), dtype=np.int32)
+  input_mask = list(map(make_mask, input_idx_padded, sentiment_mask_indices))
 
   features = {'input_data': input_idx_padded,
                'input_mask': input_mask,
@@ -170,11 +173,11 @@ def train_generator():
 
 def train_input_fn():
   output_types = {'input_data': tf.int32,
-                  'input_mask': tf.int32,
+                  'input_mask': tf.float32,
                   'sentiment_labels': tf.float32,
                   'sentiment_mask_indices': tf.int32}
   output_shapes = {'input_data': [None, None],
-                   'input_mask': [None, None],
+                   'input_mask': [None, None, None],
                    'sentiment_labels': [None, None, 3],
                    'sentiment_mask_indices': [None, None]}
   
@@ -190,3 +193,4 @@ def train_input_fn():
 if __name__ == '__main__':
   for data in train_input_fn():
     print(data)
+    input()

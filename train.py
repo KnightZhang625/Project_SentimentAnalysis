@@ -41,7 +41,11 @@ def model_fn_builder():
     # get data
     input_data = features['input_data']
     input_mask = features['input_mask']
-
+    
+    if is_training:
+      sentiment_labels = features['sentiment_labels']
+      sentiment_mask_indices = features['sentiment_mask_indices']
+  
     # build model
     model = BertEncoder(
       config=cg.BertEncoderConfig,
