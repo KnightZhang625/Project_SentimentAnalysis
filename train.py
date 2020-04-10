@@ -53,6 +53,29 @@ def get_true_sequence(sentiment_labels):
 
   return true_sequence
 
+def calculate_mse_loss(model_output, true_label, true_sequence):
+  """This is used for calculating the mse loss.
+  
+  Args:
+    model_output: (batch_size, seq_length, mask_padding_size).
+    true_label: (batch, seq_length, mask_padding_size).
+    true_sequence: (batch * seq_length * mask_padding_size).
+
+  Returns:
+    mse_loss: tf.float32.
+  """
+  batch_size = ft.get_shape_list(model_output, expected_rank=2)[0]
+  # flatten the tensor
+  model_output_flatten = tf.reshape(model_output, [-1])
+  true_label_flatten = tf.reshape(true_label, [-1])
+  # get actual length without mask, cause the following mse calculation ignore the mask
+  length = tf.reduce_sum(true_sequence)
+  
+  mse_loss = tf.reduce_sum(
+    tf.pow((model_output_flatten - true_label_flatten), 2) * true_sequence) / length / batch_size
+
+  return mse_loss
+
 def model_fn_builder():
   """returns `model_fn` closure for the Estimator."""
 
@@ -110,15 +133,15 @@ def model_fn_builder():
     else:
       if mode == tf.estimator.ModeKeys.TRAIN:
         batch_size = tf.cast(ft.get_shape_list(labels, expected_rank=1)[0], dtype=tf.float32)
+        # cross-entropy loss
         cls_loss = tf.reduce_sum(tf.nn.sparse_softmax_cross_entropy_with_logits(
           labels=labels,
           logits=output_logits)) / batch_size
-        
-        output_sentiment_probs = tf.reshape(output_sentiment_probs, [-1])
+
+        # mse loss
         true_sequence = get_true_sequence(sentiment_labels)
-        length = ft.get_shape_list(true_sequence, expected_rank=1)
-        sentiment_labels = tf.reshape(sentiment_labels, [-1])
-        mse_loss = tf.reduce_sum(tf.pow((output_sentiment_probs - sentiment_labels), 2) * true_sequence) / length / batch_size
+        mse_loss = calculate_mse_loss(
+          output_sentiment_probs, sentiment_labels, true_sequence)
 
         loss = cls_loss + mse_loss
 
