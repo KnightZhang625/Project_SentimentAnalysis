@@ -133,3 +133,4 @@ data/Stanford_Data/
 log/
 models/
 pb_models/
+pretrain_models/

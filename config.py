@@ -6,7 +6,7 @@ MAIN_PATH = Path(__file__).absolute().parent
 # data
 TRAIN_POS_DATA_PATH = MAIN_PATH / 'data/Stanford_Data_binary/train_pos.bin'
 TRAIN_NEG_DATA_PATH = MAIN_PATH / 'data/Stanford_Data_binary/train_neg.bin'
-VOCAB_IDX_PATH = MAIN_PATH / 'data/dictionary_binary_new/vocab.bin'
+VOCAB_IDX_PATH = MAIN_PATH / 'data/vocab_idx.bin'
 INT_PATH = MAIN_PATH / 'data/dictionary_binary_new/int.bin'
 NEG_PATH = MAIN_PATH / 'data/dictionary_binary/neg.bin'
 KEYWORDS_PATH = MAIN_PATH / 'data/dictionary_binary_new/keywords.bin'
@@ -20,13 +20,14 @@ keep_checkpoint_max = 1
 save_checkpoints_steps = 1000 
 
 # global
-batch_size = 64
-train_steps = 10000
+batch_size = 32
+train_steps = 1
 print_info_interval = 10
 learning_rate = 1e-3
 lr_limit = 1e-4
 colocate_gradients_with_ops = True
-enable_vae = True
+random_mask_prob = 0.5
+enable_vae = False
 
 # Bert
 class BertEncoderConfig(object):
