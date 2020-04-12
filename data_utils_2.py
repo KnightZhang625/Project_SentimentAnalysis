@@ -8,7 +8,7 @@ import random
 import functools
 import numpy as np
 import tensorflow as tf
-# tf.enable_eager_execution()
+tf.enable_eager_execution()
 from nltk import sent_tokenize, word_tokenize
 
 from preprocess.SentiWordNet import get_sentiment, penn_to_wn, ps
@@ -68,13 +68,21 @@ def padding_data(data, padding_tag=vocab_idx['[PAD]']):
   return list(map(padding_func_with_args, data))
 
 """make mask."""
-def make_mask(data, sentiment_indices):
+def make_mask(data, sentiment_indices=None):
+  mask_or_not = True if sentiment_indices is not None else False
   input_mask = []
   for i, idx in enumerate(data):
-    if i not in sentiment_indices and idx != vocab_idx['[PAD]']:
-      input_mask.append(1)
+    if mask_or_not:
+      if i not in sentiment_indices and idx != vocab_idx['[PAD]']:
+        input_mask.append(1)
+      else:
+        input_mask.append(0)
     else:
-      input_mask.append(0)
+      if idx != vocab_idx['[PAD]']:
+        input_mask.append(1)
+      else:
+        input_mask.append(0)
+
   input_mask = np.reshape(np.array(input_mask, dtype=np.float32), [1, -1])
   input_mask = np.dot(input_mask.T, input_mask)
   
@@ -127,24 +135,76 @@ def random_mask(data):
   
   return (data_final, word_polarity_labels, mask_indices)
 
+"""do not mask the sentiment vocab, remove all the non-setiment vocabs."""
+def no_mask(data):
+  # clean data
+  data = data.replace('<br />', ' ')
+  # split sentence
+  sentences_set = sent_tokenize(data)
+
+  data_final = []
+  word_polarity_labels = []
+  mask_indices = []
+  preb_sentence_length = 0  # this is used for shiftting mask_indices
+  for sentence in sentences_set:
+    # tokenize and stemming
+    sentence_tokenized = word_tokenize(sentence)
+    sentence_stem = [ps.stem(v) for v in sentence_tokenized]
+    # pos tag
+    sentence_tagged = nltk.pos_tag(sentence_stem)
+    # get necessary sentiment for each word
+    sentence_sentiment = [get_sentiment(v, p) for (v, p) in sentence_tagged]
+    # keep the words have sentiment
+    selected_inputs = [sentence_tokenized[i] for i, item in enumerate(sentence_sentiment) if len(item) > 0]
+    selected_sentiment = [item for item in sentence_sentiment if len(item) > 0]
+    mask_indices.extend([preb_sentence_length + i for i in range(len(selected_inputs))])
+    assert len(selected_inputs) == len(selected_sentiment), _error('The lengths of inputs and sentiment mismatch.')
+    if len(selected_inputs) == 0:
+      continue
+    word_polarity_labels.extend(selected_sentiment)
+  
+    data_temp = []
+    for vocab in selected_inputs:
+      if vocab in vocab_idx:
+        data_temp.append(vocab_idx[vocab])
+      else:
+        data_temp.append(vocab_idx['[UNK]'])
+   
+    data_temp.append(vocab_idx['[SEP]'])
+    preb_sentence_length += len(data_temp)
+    data_final.extend(data_temp)
+
+  data_final.insert(0, vocab_idx['[CLS]'])
+
+  return (data_final, word_polarity_labels, mask_indices)
+
 """extract sentiment, language model, word polarity features."""
-def extract_features(data):
+def extract_features(data, mask_or_not=True):
   sentences = [item[1] for item in data]
   labels = np.array([item[0] for item in data], dtype=np.int32)
 
   # Random Mask
-  sentiment_featurs = list(map(random_mask, sentences))
-  input_idx = [item[0] for item in sentiment_featurs]
-  sentiment_labels = [item[1] for item in sentiment_featurs]
-  sentiment_mask_indices = [item[2] for item in sentiment_featurs]
-
+  if mask_or_not:
+    sentiment_featurs = list(map(random_mask, sentences))
+    input_idx = [item[0] for item in sentiment_featurs]
+    sentiment_labels = [item[1] for item in sentiment_featurs]
+    sentiment_mask_indices = [item[2] for item in sentiment_featurs]
+  else:
+    sentiment_features = list(map(no_mask, sentences))
+    input_idx = [item[0] for item in sentiment_features]
+    sentiment_labels = [item[1] for item in sentiment_features]
+    sentiment_mask_indices = [item[2] for item in sentiment_features]
+   
   # Padding
   input_idx_padded = np.array(padding_data(input_idx), dtype=np.int32)
   sentiment_labels_padded = np.array(padding_data(sentiment_labels, [-1, -1, -1]), dtype=np.float32)
   sentiment_mask_indices_padded = np.array(padding_data(sentiment_mask_indices, 0), dtype=np.int32)
 
   # Make Mask
-  input_mask = list(map(make_mask, input_idx_padded, sentiment_mask_indices))
+  if mask_or_not:
+    input_mask = list(map(make_mask, input_idx_padded, mask_or_not, sentiment_mask_indices))
+  else:
+    input_mask = list(map(make_mask, input_idx_padded))
 
   features = {'input_data': input_idx_padded,
                'input_mask': input_mask,
@@ -169,7 +229,7 @@ def train_generator():
   # create batch
   for (start, end) in provide_batch_idx(len(train_data), batch_size):
     data_batch = train_data[start : end]
-    yield extract_features(data_batch)
+    yield extract_features(data_batch, False)
 
 def train_input_fn():
   output_types = {'input_data': tf.int32,

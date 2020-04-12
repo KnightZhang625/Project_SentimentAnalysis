@@ -127,12 +127,12 @@ if __name__ == '__main__':
   # save_to_binary(negation_vocabs, save_path_prefix / 'neg.bin')
 
   # read the data and save
-  # data_path_list = (MAIN_PATH / 'data/2017_English_final/GOLD/Subtask_A/').rglob('twitter-*')
-  # save_path_prefix = MAIN_PATH / 'data/data_binary'
-  # for path in data_path_list:
-  #   data = read_twitter_data(path)
-  #   file_name = str(path).split('/')[-1].replace('.txt', '')
-  #   save_to_binary(data, save_path_prefix / '{}.bin'.format(file_name))\
+  data_path_list = (MAIN_PATH / 'data/2017_English_final/GOLD/Subtask_A/').rglob('twitter-*')
+  save_path_prefix = MAIN_PATH / 'data/data_binary'
+  for path in data_path_list:
+    data = read_twitter_data(path)
+    file_name = str(path).split('/')[-1].replace('.txt', '')
+    save_to_binary(data, save_path_prefix / '{}.bin'.format(file_name))\
   
   # data_path_list_pos = (MAIN_PATH / 'data/Stanford_Data/test/pos').rglob('*.txt')
   data_path_list_pos = (MAIN_PATH / 'data/Stanford_Data/test/pos').rglob('[0-9]*.txt')

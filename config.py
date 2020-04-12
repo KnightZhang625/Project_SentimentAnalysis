@@ -34,10 +34,10 @@ class BertEncoderConfig(object):
   hidden_dropout_prob = 0.2
   attention_dropout_prob = 0.2
 
-  vocab_size = 29258
+  vocab_size = 30522
   num_classes = 2
   embedding_size = 30
-  max_positional_embeddings = 2000
+  max_positional_embeddings = 600
   hidden_size = 30
   num_hidden_layers = 2
   num_attention_heads = 2

@@ -57,20 +57,20 @@ def calculate_mse_loss(model_output, true_label, true_sequence):
   """This is used for calculating the mse loss.
   
   Args:
-    model_output: (batch_size, seq_length, mask_padding_size).
+    model_output: (batch_size * seq_length, mask_padding_size).
     true_label: (batch, seq_length, mask_padding_size).
     true_sequence: (batch * seq_length * mask_padding_size).
 
   Returns:
     mse_loss: tf.float32.
   """
-  batch_size = ft.get_shape_list(model_output, expected_rank=2)[0]
+  batch_size = tf.cast(ft.get_shape_list(model_output, expected_rank=2)[0], dtype=tf.float32)
   # flatten the tensor
   model_output_flatten = tf.reshape(model_output, [-1])
   true_label_flatten = tf.reshape(true_label, [-1])
   # get actual length without mask, cause the following mse calculation ignore the mask
   length = tf.reduce_sum(true_sequence)
-  
+
   mse_loss = tf.reduce_sum(
     tf.pow((model_output_flatten - true_label_flatten), 2) * true_sequence) / length / batch_size
 
@@ -101,9 +101,16 @@ def model_fn_builder():
     # [cls] output -> [b, h]
     cls_output = model.get_cls_output()
     # sequence_output -> [b, s, h]
-    sequence_output = model.get_sequence_output()
+    sequence_output = model.get_sequence_output()[:, 1:, :]
     # masked_output -> [b * x, h]
     masked_output = gather_indexs(sequence_output, sentiment_mask_indices)
+    # # For no mask
+    # # output -> [b * x, w]
+    # shape = ft.get_shape_list(sequence_output[:, 1:, :], expected_rank=3)
+    # batch_size = shape[0]
+    # seq_length = shape[1]
+    # width = shape[2]
+    # masked_output = tf.reshape(sequence_output[:, 1:, :], [batch_size * seq_length, width])
 
     # get output for word polarity prediction
     with tf.variable_scope('sentiment_project'):
