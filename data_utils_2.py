@@ -150,18 +150,25 @@ def no_mask(data):
     # tokenize and stemming
     sentence_tokenized = word_tokenize(sentence)
     sentence_stem = [ps.stem(v) for v in sentence_tokenized]
+
     # pos tag
     sentence_tagged = nltk.pos_tag(sentence_stem)
+
     # get necessary sentiment for each word
     sentence_sentiment = [get_sentiment(v, p) for (v, p) in sentence_tagged]
+
     # keep the words have sentiment
-    selected_inputs = [sentence_tokenized[i] for i, item in enumerate(sentence_sentiment) if len(item) > 0]
-    selected_sentiment = [item for item in sentence_sentiment if len(item) > 0]
+    # selected_inputs = [sentence_tokenized[i] for i, item in enumerate(sentence_sentiment) if len(item) > 0]
+    selected_inputs = [sentence_tokenized[i] for i, item in enumerate(sentence_sentiment) 
+                        if (item[0] + item[1] != 0)]
+    # selected_sentiment = [item for item in sentence_sentiment if len(item) > 0]
+    selected_sentiment = [item for item in sentence_sentiment if (item[0] + item[1] != 0)]
+
+    # save the indices so that when calculating loss, [SEP], [PAD] will not be considered
     mask_indices.extend([preb_sentence_length + i for i in range(len(selected_inputs))])
     assert len(selected_inputs) == len(selected_sentiment), _error('The lengths of inputs and sentiment mismatch.')
     if len(selected_inputs) == 0:
       continue
-    word_polarity_labels.extend(selected_sentiment)
   
     data_temp = []
     for vocab in selected_inputs:
@@ -171,8 +178,11 @@ def no_mask(data):
         data_temp.append(vocab_idx['[UNK]'])
    
     data_temp.append(vocab_idx['[SEP]'])
+    # add sentiment for [SEP], so that the corresponding mask_indices will not mismatch
+    selected_sentiment.append([-1, -1, -1])
     preb_sentence_length += len(data_temp)
     data_final.extend(data_temp)
+    word_polarity_labels.extend(selected_sentiment)
 
   data_final.insert(0, vocab_idx['[CLS]'])
 
@@ -189,6 +199,7 @@ def extract_features(data, mask_or_not=True):
     input_idx = [item[0] for item in sentiment_featurs]
     sentiment_labels = [item[1] for item in sentiment_featurs]
     sentiment_mask_indices = [item[2] for item in sentiment_featurs]
+  # full mask
   else:
     sentiment_features = list(map(no_mask, sentences))
     input_idx = [item[0] for item in sentiment_features]
