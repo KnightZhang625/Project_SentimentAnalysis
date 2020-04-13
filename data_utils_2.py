@@ -8,7 +8,7 @@ import random
 import functools
 import numpy as np
 import tensorflow as tf
-tf.enable_eager_execution()
+# tf.enable_eager_execution()
 from nltk import sent_tokenize, word_tokenize
 
 from preprocess.SentiWordNet import get_sentiment, penn_to_wn, ps
@@ -40,6 +40,7 @@ def make_dict(path):
       pickle.dump(vocab_idx, file)
       pickle.dump(idx_vocab, file_2) 
 
+make_dict('data/vocab.txt')
 """load the dictionary file."""
 def load_dict():
   global vocab_idx
@@ -160,16 +161,16 @@ def no_mask(data):
     # keep the words have sentiment
     # selected_inputs = [sentence_tokenized[i] for i, item in enumerate(sentence_sentiment) if len(item) > 0]
     selected_inputs = [sentence_tokenized[i] for i, item in enumerate(sentence_sentiment) 
-                        if (item[0] + item[1] != 0)]
+                        if len(item) > 0 and (item[0] + item[1] != 0)]
     # selected_sentiment = [item for item in sentence_sentiment if len(item) > 0]
-    selected_sentiment = [item for item in sentence_sentiment if (item[0] + item[1] != 0)]
+    selected_sentiment = [item for item in sentence_sentiment if len(item) > 0 and (item[0] + item[1] != 0)]
 
     # save the indices so that when calculating loss, [SEP], [PAD] will not be considered
     mask_indices.extend([preb_sentence_length + i for i in range(len(selected_inputs))])
     assert len(selected_inputs) == len(selected_sentiment), _error('The lengths of inputs and sentiment mismatch.')
     if len(selected_inputs) == 0:
       continue
-  
+
     data_temp = []
     for vocab in selected_inputs:
       if vocab in vocab_idx:
@@ -178,8 +179,10 @@ def no_mask(data):
         data_temp.append(vocab_idx['[UNK]'])
    
     data_temp.append(vocab_idx['[SEP]'])
-    # add sentiment for [SEP], so that the corresponding mask_indices will not mismatch
-    selected_sentiment.append([-1, -1, -1])
+    # increase length here, because the [SEP]
+    # the mask indice could be [0, 1, 2, 4, 5], where 3 refers to [SEP]
+    # the gathered sequence output s  hould be [0, 1, 2, 4, 5]
+    # the labels are [X, X, X, X, X]
     preb_sentence_length += len(data_temp)
     data_final.extend(data_temp)
     word_polarity_labels.extend(selected_sentiment)

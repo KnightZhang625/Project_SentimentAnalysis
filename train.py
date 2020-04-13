@@ -100,17 +100,10 @@ def model_fn_builder():
       input_mask=input_mask)
     # [cls] output -> [b, h]
     cls_output = model.get_cls_output()
-    # sequence_output -> [b, s, h]
+    # sequence_output -> [b, s, h], do not contain [CLS], because the mask indices do not shift
     sequence_output = model.get_sequence_output()[:, 1:, :]
     # masked_output -> [b * x, h]
     masked_output = gather_indexs(sequence_output, sentiment_mask_indices)
-    # # For no mask
-    # # output -> [b * x, w]
-    # shape = ft.get_shape_list(sequence_output[:, 1:, :], expected_rank=3)
-    # batch_size = shape[0]
-    # seq_length = shape[1]
-    # width = shape[2]
-    # masked_output = tf.reshape(sequence_output[:, 1:, :], [batch_size * seq_length, width])
 
     # get output for word polarity prediction
     with tf.variable_scope('sentiment_project'):
