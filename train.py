@@ -77,7 +77,7 @@ def gather_indexs(sequence_output, sentiment_mask_indices):
 def get_true_sequence(sentiment_labels):
   # [0.7, 0.5, -0.2, -2, -2] -> [2.7, 2.5, 1.8, 0, 0]
   # -> [True, True, True, False, False] -> [1.0, 1.0, 1.0, 0.0, 0.0]
-  sentiment_labels = tf.reshape(sentiment_labels, [-1]) + 2
+  sentiment_labels = tf.reshape(sentiment_labels, [-1]) + 1
   sentiment_labels = tf.cast(sentiment_labels, dtype=tf.bool)
   true_sequence = tf.cast(sentiment_labels, dtype=tf.float32)
 
@@ -106,7 +106,7 @@ def calculate_mse_loss(model_output, true_label, true_sequence):
 
   return mse_loss
 
-def model_fn_builder(init_checkpoint='./pretrain_models/bert_model.ckpt'):
+def model_fn_builder(init_checkpoint=None):
   """returns `model_fn` closure for the Estimator."""
 
   def model_fn(features, labels, mode, params):
@@ -122,6 +122,7 @@ def model_fn_builder(init_checkpoint='./pretrain_models/bert_model.ckpt'):
     if mode == tf.estimator.ModeKeys.TRAIN:
       sentiment_labels = features['sentiment_labels']
       sentiment_mask_indices = features['sentiment_mask_indices']
+      true_length_from_data = features['true_length']
 
     # build model
     model = BertEncoder(
@@ -171,14 +172,13 @@ def model_fn_builder(init_checkpoint='./pretrain_models/bert_model.ckpt'):
 
         # get output for word polarity prediction
         with tf.variable_scope('sentiment_project'):
-          # [b * h, 3]
+          # [b * x, 2]
           output_sentiment = tf.layers.dense(
             masked_output,
-            1,
-            activation=tf.nn.tanh,
+            2,
             name='final_output',
             kernel_initializer=ft.create_initializer(initializer_range=cg.BertEncoderConfig.initializer_range))
-        output_sentiment_probs = tf.nn.softmax(output_sentiment, axis=-1)
+        # output_sentiment_probs = tf.nn.softmax(output_sentiment, axis=-1)
 
         batch_size = tf.cast(ft.get_shape_list(labels, expected_rank=1)[0], dtype=tf.float32)
         # cross-entropy loss
@@ -187,9 +187,16 @@ def model_fn_builder(init_checkpoint='./pretrain_models/bert_model.ckpt'):
           logits=output_logits)) / batch_size
 
         # mse loss
-        true_sequence = get_true_sequence(sentiment_labels)
-        mse_loss = calculate_mse_loss(
-          output_sentiment_probs, sentiment_labels, true_sequence)
+        # # Regression Model
+        true_sequence = get_true_sequence(true_length_from_data)
+        # mse_loss = calculate_mse_loss(
+        #   output_sentiment, sentiment_labels, true_sequence)
+
+        # # Classification Model
+        true_label_flatten = tf.reshape(sentiment_labels, [-1])
+        mse_loss = tf.reduce_sum(tf.nn.sparse_softmax_cross_entropy_with_logits(
+          labels=true_label_flatten,
+          logits=output_sentiment) * true_sequence) / batch_size
 
         loss = cls_loss + mse_loss
         # loss = cls_loss
