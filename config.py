@@ -27,22 +27,22 @@ learning_rate = 1e-4
 lr_limit = 1e-4
 colocate_gradients_with_ops = True
 random_mask_prob = 0.5
-enable_vae = False
+# enable_vae = False
 
 # Bert
 class BertEncoderConfig(object):
-  hidden_dropout_prob = 0.2
-  attention_dropout_prob = 0.2
+  hidden_dropout_prob = 0.1
+  attention_dropout_prob = 0.1
 
-  vocab_size = 29258
+  vocab_size = 30522
   num_classes = 2
-  embedding_size = 320
-  max_positional_embeddings = 300
-  hidden_size = 320
+  embedding_size = 512
+  max_positional_embeddings = 512
+  hidden_size = 512
   num_hidden_layers = 4
   num_attention_heads = 4
-  intermediate_size = 320
-  intermediate_before_final_output_size = 320
+  intermediate_size = 2048
+  # intermediate_before_final_output_size = 320
 
   initializer_range = 0.02
   hidden_act = 'gelu'
