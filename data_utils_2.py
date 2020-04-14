@@ -140,9 +140,9 @@ def random_mask(data):
 """do not mask the sentiment vocab, remove all the non-setiment vocabs."""
 def no_mask(data):
   def select_useful_sentiment(scores):
-    """return either max pos or max neg score."""
+    """return either positive tag or negative tag for each word."""
     pos_score, neg_score= scores[0], scores[1]
-    return pos_score if pos_score > neg_score else -neg_score
+    return 1 if pos_score > neg_score else 0
   
   # clean data
   data = data.replace('<br />', ' ')
@@ -175,7 +175,7 @@ def no_mask(data):
     selected_inputs = [selected_inputs_initial_step[i] for i, item in enumerate(selected_sentiment_initial_step) if item[2] != 1.0]
     selected_sentiment_mid_step = [item for item in selected_sentiment_initial_step if item[2] != 1.0]
     selected_sentiment = list(map(select_useful_sentiment, selected_sentiment_mid_step))
-
+  
     # save the indices so that when calculating loss, [SEP], [PAD] will not be considered
     mask_indices.extend([preb_sentence_length + i for i in range(len(selected_inputs))])
     assert len(selected_inputs) == len(selected_sentiment), _error('The lengths of inputs and sentiment mismatch.')
@@ -219,10 +219,12 @@ def extract_features(data, mask_or_not=True):
     input_idx = [item[0] for item in sentiment_features]
     sentiment_labels = [item[1] for item in sentiment_features]
     sentiment_mask_indices = [item[2] for item in sentiment_features]
-   
+  
   # Padding
   input_idx_padded = np.array(padding_data(input_idx), dtype=np.int32)
-  sentiment_labels_padded = np.array(padding_data(sentiment_labels, -2), dtype=np.float32)
+  # sentiment_labels_padded = np.array(padding_data(sentiment_labels, -2), dtype=np.float32)
+  sentiment_labels_padded = np.array(padding_data(sentiment_labels, 0), dtype=np.int32)
+  true_length = np.array(padding_data(sentiment_labels, -1), dtype=np.float32)
   sentiment_mask_indices_padded = np.array(padding_data(sentiment_mask_indices, 0), dtype=np.int32)
 
   # Make Mask
@@ -234,7 +236,8 @@ def extract_features(data, mask_or_not=True):
   features = {'input_data': input_idx_padded,
                'input_mask': input_mask,
                'sentiment_labels': sentiment_labels_padded,
-               'sentiment_mask_indices': sentiment_mask_indices_padded}
+               'sentiment_mask_indices': sentiment_mask_indices_padded,
+               'true_length': true_length}
 
   return (features, labels)
 
@@ -259,12 +262,14 @@ def train_generator():
 def train_input_fn():
   output_types = {'input_data': tf.int32,
                   'input_mask': tf.float32,
-                  'sentiment_labels': tf.float32,
-                  'sentiment_mask_indices': tf.int32}
+                  'sentiment_labels': tf.int32,
+                  'sentiment_mask_indices': tf.int32,
+                  'true_length': tf.int32}
   output_shapes = {'input_data': [None, None],
                    'input_mask': [None, None, None],
                    'sentiment_labels': [None, None],
-                   'sentiment_mask_indices': [None, None]}
+                   'sentiment_mask_indices': [None, None],
+                   'true_length': [None, None]}
   
   dataset = tf.data.Dataset.from_generator(
     train_generator,
@@ -287,4 +292,4 @@ def server_input_fn():
 if __name__ == '__main__':
   for data in train_input_fn():
     print(data)
-    # input()
+    input()
