@@ -1,5 +1,6 @@
 # coding:utf-8
 
+import re
 import copy
 import nltk
 import codecs
@@ -39,8 +40,8 @@ def make_dict(path):
        codecs.open('data/idx_vocab.bin', 'wb') as file_2:
       pickle.dump(vocab_idx, file)
       pickle.dump(idx_vocab, file_2) 
+# make_dict('data/vocab.txt')
 
-make_dict('data/vocab.txt')
 """load the dictionary file."""
 def load_dict():
   global vocab_idx
@@ -138,6 +139,11 @@ def random_mask(data):
 
 """do not mask the sentiment vocab, remove all the non-setiment vocabs."""
 def no_mask(data):
+  def select_useful_sentiment(scores):
+    """return either max pos or max neg score."""
+    pos_score, neg_score= scores[0], scores[1]
+    return pos_score if pos_score > neg_score else -neg_score
+  
   # clean data
   data = data.replace('<br />', ' ')
   # split sentence
@@ -150,20 +156,25 @@ def no_mask(data):
   for sentence in sentences_set:
     # tokenize and stemming
     sentence_tokenized = word_tokenize(sentence)
-    sentence_stem = [ps.stem(v) for v in sentence_tokenized]
+    # disable stemming
+    # sentence_stem = [ps.stem(v) for v in sentence_tokenized]
+    sentence_stem = [v for v in sentence_tokenized]
 
     # pos tag
     sentence_tagged = nltk.pos_tag(sentence_stem)
-
+    
     # get necessary sentiment for each word
     sentence_sentiment = [get_sentiment(v, p) for (v, p) in sentence_tagged]
 
     # keep the words have sentiment
-    # selected_inputs = [sentence_tokenized[i] for i, item in enumerate(sentence_sentiment) if len(item) > 0]
-    selected_inputs = [sentence_tokenized[i] for i, item in enumerate(sentence_sentiment) 
-                        if len(item) > 0 and (item[0] + item[1] != 0)]
-    # selected_sentiment = [item for item in sentence_sentiment if len(item) > 0]
-    selected_sentiment = [item for item in sentence_sentiment if len(item) > 0 and (item[0] + item[1] != 0)]
+    selected_inputs_initial_step = [sentence_tokenized[i] for i, item in enumerate(sentence_sentiment) if len(item) > 0]
+    selected_sentiment_initial_step = [item for item in sentence_sentiment if len(item) > 0]
+    assert len(selected_inputs_initial_step) == len(selected_sentiment_initial_step), _error('Length not match.')
+
+    # selected the words which have positive score or negative score, then keep the bigger score
+    selected_inputs = [selected_inputs_initial_step[i] for i, item in enumerate(selected_sentiment_initial_step) if item[2] != 1.0]
+    selected_sentiment_mid_step = [item for item in selected_sentiment_initial_step if item[2] != 1.0]
+    selected_sentiment = list(map(select_useful_sentiment, selected_sentiment_mid_step))
 
     # save the indices so that when calculating loss, [SEP], [PAD] will not be considered
     mask_indices.extend([preb_sentence_length + i for i in range(len(selected_inputs))])
@@ -211,7 +222,7 @@ def extract_features(data, mask_or_not=True):
    
   # Padding
   input_idx_padded = np.array(padding_data(input_idx), dtype=np.int32)
-  sentiment_labels_padded = np.array(padding_data(sentiment_labels, [-1, -1, -1]), dtype=np.float32)
+  sentiment_labels_padded = np.array(padding_data(sentiment_labels, -2), dtype=np.float32)
   sentiment_mask_indices_padded = np.array(padding_data(sentiment_mask_indices, 0), dtype=np.int32)
 
   # Make Mask
@@ -252,7 +263,7 @@ def train_input_fn():
                   'sentiment_mask_indices': tf.int32}
   output_shapes = {'input_data': [None, None],
                    'input_mask': [None, None, None],
-                   'sentiment_labels': [None, None, 3],
+                   'sentiment_labels': [None, None],
                    'sentiment_mask_indices': [None, None]}
   
   dataset = tf.data.Dataset.from_generator(
@@ -264,7 +275,16 @@ def train_input_fn():
 
   return dataset
 
+def server_input_fn():
+  input_data = tf.placeholder(tf.int32, shape=[None, None], name='input_data')
+  input_mask = tf.placeholder(tf.float32, shape=[None, None, None], name='input_mask')
+
+  receive_tensors = {'input_data': input_data, 'input_mask': input_mask}
+  features = {'input_data': input_data, 'input_mask': input_mask}
+
+  return tf.estimator.export.ServingInputReceiver(features, receive_tensors)
+
 if __name__ == '__main__':
   for data in train_input_fn():
     print(data)
-    input()
+    # input()
