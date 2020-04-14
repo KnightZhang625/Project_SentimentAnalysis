@@ -1,8 +1,10 @@
 # coding:utf-8
 
+import re
 import sys
 import logging
 import argparse
+import collections
 import tensorflow as tf
 from pathlib import Path
 
@@ -10,7 +12,7 @@ import config as cg
 import model_LEGO as lego
 import function_toolkit as ft
 from model import BertEncoder
-from data_utils_2 import train_input_fn
+from data_utils_2 import train_input_fn, server_input_fn
 
 from log import log_info as _info
 from log import log_error as _error
@@ -27,6 +29,32 @@ class Setup(object):
                     logging.StreamHandler(sys.stdout)]
         logging.getLogger('tensorflow').handlers = handlers
 setup = Setup()
+
+def get_assignment_map_from_checkpoint(tvars, init_checkpoint):
+  """Compute the union of the current variables and checkpoint variables."""
+  assignment_map = {}
+  initialized_variable_names = {}
+
+  name_to_variable = collections.OrderedDict()
+  for var in tvars:
+    name = var.name
+    m = re.match("^(.*):\\d+$", name)
+    if m is not None:
+      name = m.group(1)
+    name_to_variable[name] = var
+
+  init_vars = tf.train.list_variables(init_checkpoint)
+
+  assignment_map = collections.OrderedDict()
+  for x in init_vars:
+    (name, var) = (x[0], x[1])
+    if name not in name_to_variable:
+      continue
+    assignment_map[name] = name
+    initialized_variable_names[name] = 1
+    initialized_variable_names[name + ":0"] = 1
+
+  return (assignment_map, initialized_variable_names)
 
 def gather_indexs(sequence_output, sentiment_mask_indices):
   shape = ft.get_shape_list(sequence_output, expected_rank=3)
@@ -47,7 +75,9 @@ def gather_indexs(sequence_output, sentiment_mask_indices):
   return output_tensor
 
 def get_true_sequence(sentiment_labels):
-  sentiment_labels = tf.reshape(sentiment_labels, [-1]) + -1
+  # [0.7, 0.5, -0.2, -2, -2] -> [2.7, 2.5, 1.8, 0, 0]
+  # -> [True, True, True, False, False] -> [1.0, 1.0, 1.0, 0.0, 0.0]
+  sentiment_labels = tf.reshape(sentiment_labels, [-1]) + 2
   sentiment_labels = tf.cast(sentiment_labels, dtype=tf.bool)
   true_sequence = tf.cast(sentiment_labels, dtype=tf.float32)
 
@@ -72,11 +102,11 @@ def calculate_mse_loss(model_output, true_label, true_sequence):
   length = tf.reduce_sum(true_sequence)
 
   mse_loss = tf.reduce_sum(
-    tf.pow((model_output_flatten - true_label_flatten), 2) * true_sequence) / length / batch_size
+    tf.pow((model_output_flatten - true_label_flatten), 2) * true_sequence) / batch_size
 
   return mse_loss
 
-def model_fn_builder():
+def model_fn_builder(init_checkpoint='./pretrain_models/bert_model.ckpt'):
   """returns `model_fn` closure for the Estimator."""
 
   def model_fn(features, labels, mode, params):
@@ -89,8 +119,9 @@ def model_fn_builder():
     # get data
     input_data = features['input_data']
     input_mask = features['input_mask']
-    sentiment_labels = features['sentiment_labels']
-    sentiment_mask_indices = features['sentiment_mask_indices']
+    if mode == tf.estimator.ModeKeys.TRAIN:
+      sentiment_labels = features['sentiment_labels']
+      sentiment_mask_indices = features['sentiment_mask_indices']
 
     # build model
     model = BertEncoder(
@@ -98,23 +129,26 @@ def model_fn_builder():
       is_training=is_training,
       input_ids=input_data,
       input_mask=input_mask)
+    
+    tvars = tf.trainable_variables()
+    initialized_variable_names = {}
+    if init_checkpoint:
+      (assignment_map, initialized_variable_names
+      ) = get_assignment_map_from_checkpoint(tvars, init_checkpoint)
+      tf.train.init_from_checkpoint(init_checkpoint, assignment_map)
+
+    tf.logging.info("**** Trainable Variables ****")
+    for var in tvars:
+      init_string = ""
+      if var.name in initialized_variable_names:
+        init_string = ", *INIT_FROM_CKPT*"
+      tf.logging.info("  name = %s, shape = %s%s", var.name, var.shape,
+                      init_string)
+
     # [cls] output -> [b, h]
     cls_output = model.get_cls_output()
     # sequence_output -> [b, s, h], do not contain [CLS], because the mask indices do not shift
     sequence_output = model.get_sequence_output()[:, 1:, :]
-    # masked_output -> [b * x, h]
-    masked_output = gather_indexs(sequence_output, sentiment_mask_indices)
-
-    # get output for word polarity prediction
-    with tf.variable_scope('sentiment_project'):
-      # [b * h, 3]
-      output_sentiment = tf.layers.dense(
-        masked_output,
-        3,
-        activation=tf.nn.relu,
-        name='final_output',
-        kernel_initializer=ft.create_initializer(initializer_range=cg.BertEncoderConfig.initializer_range))
-      output_sentiment_probs = tf.nn.softmax(output_sentiment, axis=-1)
 
     # project the hidden size to the num_classes
     with tf.variable_scope('final_output'):
@@ -132,6 +166,20 @@ def model_fn_builder():
       output_spec = tf.estimator.EstimatorSpec(mode, predictions=predictions)
     else:
       if mode == tf.estimator.ModeKeys.TRAIN:
+        # masked_output -> [b * x, h]
+        masked_output = gather_indexs(sequence_output, sentiment_mask_indices)
+
+        # get output for word polarity prediction
+        with tf.variable_scope('sentiment_project'):
+          # [b * h, 3]
+          output_sentiment = tf.layers.dense(
+            masked_output,
+            1,
+            activation=tf.nn.tanh,
+            name='final_output',
+            kernel_initializer=ft.create_initializer(initializer_range=cg.BertEncoderConfig.initializer_range))
+        output_sentiment_probs = tf.nn.softmax(output_sentiment, axis=-1)
+
         batch_size = tf.cast(ft.get_shape_list(labels, expected_rank=1)[0], dtype=tf.float32)
         # cross-entropy loss
         cls_loss = tf.reduce_sum(tf.nn.sparse_softmax_cross_entropy_with_logits(
@@ -144,6 +192,7 @@ def model_fn_builder():
           output_sentiment_probs, sentiment_labels, true_sequence)
 
         loss = cls_loss + mse_loss
+        # loss = cls_loss
 
         learning_rate = tf.train.polynomial_decay(cg.learning_rate,
                                   tf.train.get_or_create_global_step(),
