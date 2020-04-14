@@ -196,7 +196,7 @@ def model_fn_builder(init_checkpoint=None):
         true_label_flatten = tf.reshape(sentiment_labels, [-1])
         mse_loss = tf.reduce_sum(tf.nn.sparse_softmax_cross_entropy_with_logits(
           labels=true_label_flatten,
-          logits=output_sentiment) * true_sequence) / batch_size
+          logits=output_sentiment) * true_sequence) / tf.reduce_sum(true_sequence)
 
         loss = cls_loss + mse_loss
         # loss = cls_loss
