@@ -106,7 +106,8 @@ def calculate_mse_loss(model_output, true_label, true_sequence):
 
   return mse_loss
 
-def model_fn_builder(init_checkpoint=None):
+def model_fn_builder(init_checkpoint='pretrain_models_2/bert_model.ckpt'):
+# def model_fn_builder(init_checkpoint=None):
   """returns `model_fn` closure for the Estimator."""
 
   def model_fn(features, labels, mode, params):
@@ -169,7 +170,7 @@ def model_fn_builder(init_checkpoint=None):
       if mode == tf.estimator.ModeKeys.TRAIN:
         # masked_output -> [b * x, h]
         masked_output = gather_indexs(sequence_output, sentiment_mask_indices)
-
+        
         # get output for word polarity prediction
         with tf.variable_scope('sentiment_project'):
           # [b * x, 2]
@@ -217,7 +218,7 @@ def model_fn_builder(init_checkpoint=None):
 
         current_steps = tf.train.get_or_create_global_step()
         logging_hook = tf.train.LoggingTensorHook(
-          {'step' : current_steps, 'loss' : loss, 'cls_loss' : cls_loss, 'mse_loss' : mse_loss, 'lr' : lr}, 
+          {'step' : current_steps, 'loss' : loss, 'cls_loss' : cls_loss, 'mse_loss': mse_loss, 'lr' : lr}, 
           every_n_iter=cg.print_info_interval)
 
         output_spec = tf.estimator.EstimatorSpec(mode, loss=loss, train_op=train_op, training_hooks=[logging_hook])

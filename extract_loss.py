@@ -13,7 +13,7 @@ sys.path.insert(0, str(MAIN_PATH))
 from log import log_info as _info
 from log import log_error as _error
 
-PATTERN = r'^(loss = )\d{1,5}\.\d{1,10}' 
+PATTERN = r'^(cls_loss = )\d{1,5}\.\d{1,10}' 
 PATTERN_2 = r'(ppl = )\d{1,5}\.\d{1,10}'
 
 def extract(log_path, save_path):

@@ -62,8 +62,9 @@ def provide_batch_idx(data_length, batch_size):
 """padding data."""
 padding_func = lambda line, max_length, padding_tag : \
                 line + [padding_tag for _ in range(max_length - len(line))]
-def padding_data(data, padding_tag=vocab_idx['[PAD]']):
-  max_length = max([len(item) for item in data])
+def padding_data(data, padding_tag=vocab_idx['[PAD]'], max_length=None):
+  if max_length is None:
+    max_length = max([len(item) for item in data])
   padding_func_with_args = functools.partial(padding_func, 
                                              max_length=max_length, 
                                              padding_tag=padding_tag)
@@ -223,9 +224,9 @@ def extract_features(data, mask_or_not=True):
   # Padding
   input_idx_padded = np.array(padding_data(input_idx), dtype=np.int32)
   # sentiment_labels_padded = np.array(padding_data(sentiment_labels, -2), dtype=np.float32)
-  sentiment_labels_padded = np.array(padding_data(sentiment_labels, 0), dtype=np.int32)
-  true_length = np.array(padding_data(sentiment_labels, -1), dtype=np.float32)
-  sentiment_mask_indices_padded = np.array(padding_data(sentiment_mask_indices, 0), dtype=np.int32)
+  sentiment_labels_padded = np.array(padding_data(sentiment_labels, 0, 128), dtype=np.int32)
+  true_length = np.array(padding_data(sentiment_labels, -1, 128), dtype=np.float32)
+  sentiment_mask_indices_padded = np.array(padding_data(sentiment_mask_indices, 0, 128), dtype=np.int32)
 
   # Make Mask
   if mask_or_not:
